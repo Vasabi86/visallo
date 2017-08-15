@@ -63,6 +63,11 @@ define([
                     }
                 }
             })(),
+            userAccessChange: function(user) {
+                require(['../store/user/actions-impl'], function(actions) {
+                    store.getStore().dispatch(actions.putUser({ user }));
+                })
+            },
             userWorkspaceChange: NOOP,
             publish: function(data) {
                 // Property undo already publishes propertyChange

@@ -81,9 +81,11 @@ define([
                     return ajax('POST', query.url, query.parameters);
                 })
                 .tap(function({ elements, referencedElements }) {
-                    storeHelper.putSearchResults(elements)
-                    if (referencedElements) {
+                    if (options.disableResultCache !== true) {
                         storeHelper.putSearchResults(elements)
+                        if (referencedElements) {
+                            storeHelper.putSearchResults(referencedElements)
+                        }
                     }
                 })
         },

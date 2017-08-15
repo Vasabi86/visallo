@@ -260,7 +260,7 @@ define([
 
                 this.on('finishedLoadingTypeContent', function handler() {
                     this.off('finishedLoadingTypeContent', handler);
-                    this.$node.find('.org-visallo-layout-body').css('flex', 'none');
+                    this.$node.find('.org-visallo-layout-body').css({ flex: 'none', overflow: 'visible' });
                     this.$node.find('.org-visallo-layout-root').css('overflow', 'visible');
                 });
 

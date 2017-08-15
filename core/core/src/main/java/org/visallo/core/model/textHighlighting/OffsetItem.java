@@ -1,10 +1,10 @@
 package org.visallo.core.model.textHighlighting;
 
-import org.visallo.core.model.termMention.TermMentionFor;
-import org.visallo.web.clientapi.model.SandboxStatus;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.visallo.core.model.termMention.TermMentionFor;
+import org.visallo.web.clientapi.model.SandboxStatus;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,8 +21,6 @@ public abstract class OffsetItem implements Comparable {
 
     public abstract long getEnd();
 
-    public abstract String getType();
-
     public abstract String getId();
 
     public abstract String getProcess();
@@ -35,6 +33,14 @@ public abstract class OffsetItem implements Comparable {
         return null;
     }
 
+    public String getResolvedFromTermMentionId() {
+        return null;
+    }
+
+    public String getResolvedToTermMentionId() {
+        return null;
+    }
+
     public String getResolvedToEdgeId() {
         return null;
     }
@@ -42,6 +48,8 @@ public abstract class OffsetItem implements Comparable {
     public abstract TermMentionFor getTermMentionFor();
 
     public abstract SandboxStatus getSandboxStatus();
+
+    public abstract String getClassIdentifier();
 
     public JSONObject getInfoJson() {
         try {
@@ -54,10 +62,12 @@ public abstract class OffsetItem implements Comparable {
             if (getResolvedToVertexId() != null) {
                 infoJson.put("resolvedToVertexId", getResolvedToVertexId());
             }
+            if (getResolvedFromTermMentionId() != null) {
+                infoJson.put("resolvedFromTermMentionId", getResolvedFromTermMentionId());
+            }
             if (getResolvedToEdgeId() != null) {
                 infoJson.put("resolvedToEdgeId", getResolvedToEdgeId());
             }
-            infoJson.put("type", getType());
             if (getTermMentionFor() != null) {
                 infoJson.put("termMentionFor", getTermMentionFor().toString());
             }
@@ -70,8 +80,22 @@ public abstract class OffsetItem implements Comparable {
 
     public List<String> getCssClasses() {
         ArrayList<String> classes = new ArrayList<>();
-        if (getResolvedToVertexId() != null) {
+        boolean resolved = getResolvedToVertexId() != null && getResolvedToEdgeId() != null;
+        if (resolved) {
             classes.add("resolved");
+        }
+        TermMentionFor termMentionFor = getTermMentionFor();
+        boolean resolvable = !resolved && termMentionFor == null;
+        if (resolvable) {
+            classes.add("resolvable");
+        } else if (!resolved) {
+            classes.add("jref");
+        }
+        if (resolvable || resolved) {
+            classes.add("res");
+        }
+        if (getClassIdentifier() != null) {
+            classes.add(getClassIdentifier());
         }
         return classes;
     }
@@ -93,7 +117,8 @@ public abstract class OffsetItem implements Comparable {
     }
 
     public boolean shouldHighlight() {
-        return true;
+        // Hide term mentions resolved to entities
+        return getResolvedToTermMentionId() == null;
     }
 
     public String getTitle() {

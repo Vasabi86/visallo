@@ -77,6 +77,7 @@
             'create-react-class': '../libs/create-react-class/create-react-class.min',
             'react-proptypes-dev': '../libs/prop-types/prop-types.min',
             'react-redux': '../libs/react-redux/dist/react-redux.min',
+            'react-transition-group': '../libs/react-transition-group/dist/react-transition-group.min',
             'react-virtualized': '../libs/react-virtualized/dist/umd/react-virtualized',
             'react-virtualized-select': '../libs/@visallo/react-virtualized-select/dist/umd/react-virtualized-select',
             'Reselect': '../libs/reselect/dist/reselect',

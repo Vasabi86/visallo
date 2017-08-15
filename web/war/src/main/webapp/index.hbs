@@ -32,7 +32,7 @@
       require.urlArgs = window.visalloCacheBreaker = "vslo_v=" + versionParameter;
       window.visalloEnvironment = { dev: {{devMode}}, prod: !{{devMode}} };
       if (visalloEnvironment.dev) {
-        removeMinification('react', 'react-dom', 'create-react-class', 'react-redux', 'redux', 'react-proptypes-dev');
+        removeMinification('react', 'react-dom', 'create-react-class', 'react-redux', 'redux', 'react-transition-group', 'react-proptypes-dev');
       }
       window.visalloPluginResources = {
         beforeAuth: [

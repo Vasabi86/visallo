@@ -101,14 +101,6 @@ define([
                     applyToElement.addClass(cls);
                 }
             });
-
-            this.dataRequest('ontology', 'concepts')
-                .done(function(concepts) {
-                    var concept = concepts.byId[el.data('info')['http://visallo.org#conceptType']];
-                    if (concept) {
-                        applyToElement.addClass('concepticon-' + concept.className);
-                    }
-                });
         };
 
         this.onOpened = function() {

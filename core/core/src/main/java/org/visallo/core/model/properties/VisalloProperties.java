@@ -70,6 +70,7 @@ public class VisalloProperties {
     public static final StringSingleValueVisalloProperty TERM_MENTION_SNIPPET = new StringSingleValueVisalloProperty("http://visallo.org/termMention#snippet");
     public static final String TERM_MENTION_LABEL_HAS_TERM_MENTION = "http://visallo.org/termMention#hasTermMention";
     public static final String TERM_MENTION_LABEL_RESOLVED_TO = "http://visallo.org/termMention#resolvedTo";
+    public static final String TERM_MENTION_RESOLVED_FROM = "http://visallo.org/termMention#resolvedFrom";
 
     private VisalloProperties() {
         throw new UnsupportedOperationException("do not construct utility class");

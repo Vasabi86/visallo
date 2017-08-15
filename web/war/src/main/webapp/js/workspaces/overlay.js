@@ -88,6 +88,7 @@ define([
             this.on(document, 'edgesUpdated', this.updateDiffBadge);
             this.on(document, 'edgesDeleted', this.updateDiffBadge);
             this.on(document, 'ontologyUpdated', this.updateDiffBadge);
+            this.on(document, 'textUpdated', this.updateDiffBadge);
             this.on(document, 'updateDiff', this.updateDiffBadge);
 
             this.on(document, 'toggleDiffPanel', this.toggleDiffPanel);

@@ -103,6 +103,7 @@ public class UserPropertyPrivilegeRepository extends PrivilegeRepositoryBase imp
             );
             getUserRepository().setPropertyOnUser(user, PRIVILEGES_PROPERTY_IRI, privilegesString);
             sendNotificationToUserAboutPrivilegeChange(user, privileges, authUser);
+            workQueueRepository.pushUserAccessChange(user);
             fireUserPrivilegesUpdatedEvent(user, privileges);
         }
     }

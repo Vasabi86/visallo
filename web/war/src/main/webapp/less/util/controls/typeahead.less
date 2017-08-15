@@ -1,6 +1,11 @@
 @import (less) "../../../libs/react-select/dist/react-select.css";
 @import (less) "../../../libs/@visallo/react-virtualized-select/styles.css";
 
+/* Fix clearable overlapping text https://github.com/JedWatson/react-select/pull/1866 */
+.has-value.is-clearable.Select--single > .Select-control .Select-value {
+	margin-right: 2.9em;
+}
+
 .Select {
   margin-bottom: 0.7em;
   &.is-focused .Select-control,

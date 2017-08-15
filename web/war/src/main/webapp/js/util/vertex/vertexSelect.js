@@ -298,56 +298,15 @@ define([
                         show = typeahead.show,
                         hide = typeahead.hide;
 
-                    typeahead.$menu.on('mousewheel DOMMouseScroll', function(e) {
-                        var delta = e.wheelDelta || (e.originalEvent && e.originalEvent.wheelDelta) || -e.detail,
-                            bottomOverflow = this.scrollTop + $(this).outerHeight() - this.scrollHeight >= 0,
-                            topOverflow = this.scrollTop <= 0;
+                    //typeahead.$menu.on('mousewheel DOMMouseScroll', function(e) {
+                        //var delta = e.wheelDelta || (e.originalEvent && e.originalEvent.wheelDelta) || -e.detail,
+                            //bottomOverflow = this.scrollTop + $(this).outerHeight() - this.scrollHeight >= 0,
+                            //topOverflow = this.scrollTop <= 0;
 
-                        if ((delta < 0 && bottomOverflow) || (delta > 0 && topOverflow)) {
-                            e.preventDefault();
-                        }
-                    });
-
-                    typeahead.hide = function() {
-                        hide.apply(typeahead);
-                        typeahead.$menu.css('max-height', 'none');
-                    };
-
-                    typeahead.show = function() {
-                        show.apply(typeahead);
-
-                        if (~typeahead.$menu.css('max-height').indexOf('px')) {
-                            typeahead.$menu.css('max-height', 'none');
-                            _.defer(scrollToShow);
-                            return;
-                        } else {
-                            scrollToShow();
-                        }
-
-                        function scrollToShow() {
-
-                            var scrollParent = typeahead.$element.scrollParent(),
-                                scrollTotalHeight = scrollParent[0].scrollHeight,
-                                scrollTop = scrollParent.scrollTop(),
-                                scrollHeight = scrollParent.outerHeight(true),
-                                menuHeight = Math.min(scrollHeight - 100, typeahead.$menu.outerHeight(true)),
-                                menuMaxY = menuHeight + typeahead.$menu.offset().top,
-                                bottomSpace = scrollHeight - menuMaxY,
-                                padding = 10;
-
-                            typeahead.$menu.css({
-                                maxHeight: (menuHeight - padding) + 'px',
-                                overflow: 'auto'
-                            });
-
-                            if (bottomSpace < 0) {
-                                var scrollNeeded = scrollTop + Math.abs(bottomSpace) + padding;
-                                scrollParent.animate({
-                                    scrollTop: scrollNeeded
-                                });
-                            }
-                        }
-                    };
+                        //if ((delta < 0 && bottomOverflow) || (delta > 0 && topOverflow)) {
+                            //e.preventDefault();
+                        //}
+                    //});
                 });
         };
 

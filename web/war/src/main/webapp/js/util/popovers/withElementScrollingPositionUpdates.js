@@ -19,23 +19,51 @@ define([], function() {
 
             event.stopPropagation();
 
+            let range = data.anchorTo && data.anchorTo.range;
+            if (range) {
+                range = range.cloneRange()
+            }
+
             var self = this,
                 $target = $(event.target),
                 scroller = data && data.scrollSelector ?
                     $target.closest(data.scrollSelector) :
                     $target.scrollParent(),
                 sendPositionChange = function() {
-                    var position = $target.offset(),
-                        width = $target.outerWidth(),
-                        height = $target.outerHeight();
+                    let position, width, height;
+                    if (range) {
+                        const rects = range.getClientRects();
+                        let box;
+                        if (rects.length) {
+                            box = _.sortBy(rects, function(r) {
+                                return r.top * -1;
+                            })[0];
+                        } else {
+                            box = range.getBoundingClientRect();
+                        }
 
-                    if ((width === 0 || height === 0) && _.isFunction(event.target.getBBox)) {
-                        var box = event.target.getBBox();
                         width = box.width;
                         height = box.height;
+                        const { left, top } = box;
+                        position = { left, top };
+
+                        if (scroller[0] === document) {
+                            console.log(top, scroller.scrollTop())
+                            position.top += scroller.scrollTop();
+                        }
+                    } else {
+                        width = $target.outerWidth();
+                        height = $target.outerHeight();
+                        position = $target.offset();
+                        console.log($target.offset(), $target.position(), $target.scrollTop())
+                        if ((width === 0 || height === 0) && _.isFunction(event.target.getBBox)) {
+                            var box = event.target.getBBox();
+                            width = box.width;
+                            height = box.height;
+                        }
                     }
 
-                    self.trigger(event.target, 'positionChanged', {
+                    const eventData = {
                         position: {
                             x: position.left + width / 2,
                             y: position.top + height / 2,
@@ -44,7 +72,12 @@ define([], function() {
                             yMin: position.top,
                             yMax: position.top + height
                         }
-                    })
+                    };
+                    if (data && data.anchorTo) {
+                        eventData.anchor = data.anchorTo;
+                    }
+                    console.log('triggering', eventData.position)
+                    self.trigger(event.target, 'positionChanged', eventData);
                 };
 
             this.positionChangeScroller = scroller;

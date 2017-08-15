@@ -211,8 +211,8 @@ public abstract class UserRepository {
             json.put("id", user.getUserId());
             json.put("userName", user.getUsername());
             json.put("displayName", user.getDisplayName());
-            json.put("status", user.getUserStatus());
-            json.put("userType", user.getUserType());
+            json.put("status", user.getUserStatus().toString().toUpperCase());
+            json.put("userType", user.getUserType().toString().toUpperCase());
             json.put("email", user.getEmailAddress());
             json.put("currentWorkspaceId", user.getCurrentWorkspaceId());
             if (workspaceNames != null) {

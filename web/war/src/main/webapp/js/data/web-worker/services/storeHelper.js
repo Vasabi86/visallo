@@ -25,7 +25,9 @@ define([
         },
 
         putSearchResults(elements) {
-            store.getStore().dispatch(elementActions.putSearchResults(elements))
+            if (!_.isEmpty(elements)) {
+                store.getStore().dispatch(elementActions.putSearchResults(elements))
+            }
         },
 
         createStoreAccessorOrDownloader: (type) => (options) => {

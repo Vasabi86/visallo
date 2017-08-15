@@ -112,6 +112,7 @@ public abstract class UserPropertyAuthorizationRepositoryBase extends Authorizat
             authorizationRepository.addAuthorizationToGraph(auth);
             getUserRepository().setPropertyOnUser(user, AUTHORIZATIONS_PROPERTY_IRI, Joiner.on(SEPARATOR).join(auths));
             sendNotificationToUserAboutAddAuthorization(user, auth, authUser);
+            workQueueRepository.pushUserAccessChange(user);
             fireUserAddAuthorizationEvent(user, auth);
         }
     }
@@ -128,6 +129,7 @@ public abstract class UserPropertyAuthorizationRepositoryBase extends Authorizat
             auths.remove(auth);
             getUserRepository().setPropertyOnUser(user, AUTHORIZATIONS_PROPERTY_IRI, Joiner.on(SEPARATOR).join(auths));
             sendNotificationToUserAboutRemoveAuthorization(user, auth, authUser);
+            workQueueRepository.pushUserAccessChange(user);
             fireUserRemoveAuthorizationEvent(user, auth);
         }
     }
@@ -160,6 +162,7 @@ public abstract class UserPropertyAuthorizationRepositoryBase extends Authorizat
             sendNotificationToUserAboutRemoveAuthorization(user, auth, authUser);
             fireUserRemoveAuthorizationEvent(user, auth);
         }
+        workQueueRepository.pushUserAccessChange(user);
     }
 
     private void sendNotificationToUserAboutAddAuthorization(User user, String auth, User authUser) {

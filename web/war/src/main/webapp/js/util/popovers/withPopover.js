@@ -217,19 +217,38 @@ define([], function() {
                             top: self.attr.keepInView ? Math.max(padding, Math.min(maxTop - padding, calcTop)) : calcTop
                         };
                     },
-                    proposed = proposedForPosition(pos, 'above');
-
-                if (proposed.top + height > pos.y) {
+                    preferredPosition = self.attr.preferredPosition === 'below' ? 'below' : 'above',
                     proposed = proposedForPosition(
-                        this.dialogPositionIf && this.dialogPositionIf.below || this.dialogPosition,
-                        'below'
+                        this.dialogPositionIf && this.dialogPositionIf[preferredPosition] || this.dialogPosition,
+                        preferredPosition
                     );
-                    if (!~this.popover[0].className.indexOf('bottom')) {
+
+                if (preferredPosition === 'below') {
+                    if (proposed.top < pos.y) {
+                        proposed = proposedForPosition(
+                            this.dialogPositionIf && this.dialogPositionIf.above || this.dialogPosition,
+                            'above'
+                        );
+                        if (!~this.popover[0].className.indexOf('top')) {
+                            this.popover.removeClass('bottom').addClass('top');
+                        }
+                    } else if (!~this.popover[0].className.indexOf('bottom')) {
                         this.popover.removeClass('top').addClass('bottom');
                     }
-                } else if (!~this.popover[0].className.indexOf('top')) {
-                    this.popover.removeClass('bottom').addClass('top');
+                } else {
+                    if (proposed.top + height > pos.y) {
+                        proposed = proposedForPosition(
+                            this.dialogPositionIf && this.dialogPositionIf.below || this.dialogPosition,
+                            'below'
+                        );
+                        if (!~this.popover[0].className.indexOf('bottom')) {
+                            this.popover.removeClass('top').addClass('bottom');
+                        }
+                    } else if (!~this.popover[0].className.indexOf('top')) {
+                        this.popover.removeClass('bottom').addClass('top');
+                    }
                 }
+
 
                 var arrowLeft = pos.x - proposed.left,
                     arrowPadding = padding * 1.5,

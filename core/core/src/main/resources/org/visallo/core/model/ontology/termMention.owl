@@ -41,8 +41,14 @@
         <rdfs:range rdf:resource="http://www.w3.org/2002/07/owl#Thing"/>
         <visallo:userVisible>false</visallo:userVisible>
     </owl:ObjectProperty>
-    
 
+    <!-- http://visallo.org/termMention#resolvedFrom -->
+
+    <owl:ObjectProperty rdf:about="http://visallo.org/termMention#resolvedFrom">
+        <rdfs:domain rdf:resource="http://visallo.org/termMention#termMention"/>
+        <rdfs:range rdf:resource="http://visallo.org/termMention#termMention"/>
+        <visallo:userVisible>false</visallo:userVisible>
+    </owl:ObjectProperty>
 
     <!-- 
     ///////////////////////////////////////////////////////////////////////////////////////

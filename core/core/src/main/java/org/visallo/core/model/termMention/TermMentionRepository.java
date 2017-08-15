@@ -10,6 +10,7 @@ import org.visallo.core.model.properties.VisalloProperties;
 import org.visallo.core.model.user.GraphAuthorizationRepository;
 import org.visallo.core.security.VisalloVisibility;
 import org.visallo.core.util.ClientApiConverter;
+import org.visallo.core.util.SourceInfoSnippetSanitizer;
 import org.visallo.core.util.VisalloLogger;
 import org.visallo.core.util.VisalloLoggerFactory;
 import org.visallo.web.clientapi.model.ClientApiSourceInfo;
@@ -741,7 +742,9 @@ public class TermMentionRepository {
         result.textPropertyName = VisalloProperties.TERM_MENTION_PROPERTY_NAME.getPropertyValue(termMention);
         result.startOffset = VisalloProperties.TERM_MENTION_START_OFFSET.getPropertyValue(termMention);
         result.endOffset = VisalloProperties.TERM_MENTION_END_OFFSET.getPropertyValue(termMention);
-        result.snippet = VisalloProperties.TERM_MENTION_SNIPPET.getPropertyValue(termMention);
+        result.snippet = SourceInfoSnippetSanitizer.sanitizeSnippet(
+                VisalloProperties.TERM_MENTION_SNIPPET.getPropertyValue(termMention)
+        );
         return result;
     }
 

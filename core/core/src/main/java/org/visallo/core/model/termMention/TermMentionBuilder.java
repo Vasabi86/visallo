@@ -1,6 +1,7 @@
 package org.visallo.core.model.termMention;
 
 import com.google.common.base.Charsets;
+import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import org.vertexium.*;
 import org.vertexium.mutation.EdgeMutation;
@@ -33,6 +34,7 @@ public class TermMentionBuilder {
     private String resolvedToVertexId;
     private String resolvedEdgeId;
     private String snippet;
+    private String resolvedFromTermMention;
 
     public TermMentionBuilder() {
 
@@ -46,6 +48,7 @@ public class TermMentionBuilder {
      */
     public TermMentionBuilder(Vertex existingTermMention, Vertex outVertex) {
         this.outVertex = outVertex;
+        this.resolvedFromTermMention = existingTermMention.getId();
         this.propertyKey = VisalloProperties.TERM_MENTION_PROPERTY_KEY.getPropertyValue(existingTermMention);
         this.propertyName = VisalloProperties.TERM_MENTION_PROPERTY_NAME.getPropertyValue(existingTermMention);
         this.start = VisalloProperties.TERM_MENTION_START_OFFSET.getPropertyValue(existingTermMention, 0);
@@ -77,6 +80,14 @@ public class TermMentionBuilder {
      */
     public TermMentionBuilder propertyKey(String propertyKey) {
         this.propertyKey = propertyKey;
+        return this;
+    }
+
+    /**
+     * The id of term mention that this resolved vertex is resolved
+     */
+    public TermMentionBuilder resolvedFromTermMention(String resolvedFromFromTermMention) {
+        this.resolvedFromTermMention = resolvedFromFromTermMention;
         return this;
     }
 
@@ -244,30 +255,49 @@ public class TermMentionBuilder {
             VisalloProperties.MODIFIED_BY.setProperty(resolvedToEdgeBuilder, user.getUserId(), defaultVisibility);
             VisalloProperties.MODIFIED_DATE.setProperty(resolvedToEdgeBuilder, now, defaultVisibility);
             resolvedToEdgeBuilder.save(authorizations);
+
+            if (this.resolvedFromTermMention != null) {
+                String resolvedFromId = vertexId + "_resolvedFrom";
+                EdgeMutation resolvedFromEdgeBuilder = graph.prepareEdge(resolvedFromId, termMentionVertex.getId(), resolvedFromTermMention, VisalloProperties.TERM_MENTION_RESOLVED_FROM, visibility);
+                VisalloProperties.TERM_MENTION_VISIBILITY_JSON.setProperty(resolvedFromEdgeBuilder, this.visibilityJson, visibility);
+                VisalloProperties.MODIFIED_BY.setProperty(resolvedFromEdgeBuilder, user.getUserId(), defaultVisibility);
+                VisalloProperties.MODIFIED_DATE.setProperty(resolvedFromEdgeBuilder, now, defaultVisibility);
+                resolvedFromEdgeBuilder.save(authorizations);
+            }
         }
 
         return termMentionVertex;
     }
 
     private String createVertexId() {
-        String id = TERM_MENTION_VERTEX_ID_PREFIX + this.outVertex.getId();
+        Hasher id = Hashing.sha1().newHasher();
+
+        id.putString(this.outVertex.getId());
+
         if (this.visibilityJson == null) {
             LOGGER.warn ("Visibility Json should not be null");
         } else if (this.visibilityJson.getSource() != null && this.visibilityJson.getSource().length() > 0) {
-            String hash = Hashing.sha1().hashString(this.visibilityJson.getSource(), Charsets.UTF_8).toString();
-            id += "-" + hash;
+            id.putString(this.visibilityJson.getSource(), Charsets.UTF_8);
         }
         if (this.propertyName != null) {
-            id += "-" + this.propertyName;
+            id.putString(this.propertyName);
         }
-        return id
-                + "-"
-                + this.propertyKey
-                + "-"
+        if (this.propertyKey != null) {
+            id.putString(this.propertyKey);
+        }
+        if (this.title != null) {
+            id.putString(this.title, Charsets.UTF_8);
+        }
+        if (this.process != null) {
+            id.putString(this.process);
+        }
+
+        return TERM_MENTION_VERTEX_ID_PREFIX
                 + this.start
                 + "-"
                 + this.end
                 + "-"
-                + this.process;
+                + id.hash().toString();
     }
+
 }

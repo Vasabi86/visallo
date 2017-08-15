@@ -851,6 +851,14 @@ public abstract class WorkQueueRepository {
         broadcastJson(json);
     }
 
+    public void pushUserAccessChange(User user) {
+        JSONObject json = new JSONObject();
+        json.put("type", "userAccessChange");
+        json.put("permissions", getPermissionsWithUserIds(user.getUserId()));
+        json.put("data", getUserRepository().toJsonWithAuths(user));
+        broadcastJson(json);
+    }
+
     public void pushUserStatusChange(User user, UserStatus status) {
         broadcastUserStatusChange(user, status);
     }
@@ -935,6 +943,16 @@ public abstract class WorkQueueRepository {
         json.put("permissions", permissions);
         json.put("workspaceId", workspaceId);
         broadcastJson(json);
+    }
+
+    private JSONObject getPermissionsWithUserIds(String ...userIds) {
+        JSONObject permissions = new JSONObject();
+        JSONArray users = new JSONArray();
+        for (String userId : userIds) {
+            users.put(userId);
+        }
+        permissions.put("users", users);
+        return permissions;
     }
 
     private JSONObject getPermissionsWithWorkspace(String workspaceId) {

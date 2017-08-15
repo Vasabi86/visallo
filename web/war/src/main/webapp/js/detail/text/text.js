@@ -8,7 +8,9 @@ define([
     'util/jquery.withinScrollable',
     'util/withCollapsibleSections',
     'util/popovers/propertyInfo/withPropertyInfo',
+    'util/popovers/withElementScrollingPositionUpdates',
     'util/dnd',
+    'util/service/propertiesPromise',
     'colorjs',
     './transcriptEntries.hbs',
     'tpl!util/alert',
@@ -24,7 +26,9 @@ define([
     jqueryWithinScrollable,
     withCollapsibleSections,
     withPropertyInfo,
+    withElementScrollingPositionUpdates,
     dnd,
+    config,
     colorjs,
     transcriptEntriesTemplate,
     alertTemplate,
@@ -32,24 +36,28 @@ define([
     sf) {
     'use strict';
 
-    var HIGHLIGHT_STYLES = [
-            { name: 'None', selector: 'none' },
-            { name: 'Icons', selector: 'icons' },
-            { name: 'Underline', selector: 'underline' },
-            { name: 'Colors', selector: 'colors' }
-        ],
-        DEFAULT = 2,
-        useDefaultStyle = true,
-        TEXT_PROPERTIES = [
-            'http://visallo.org#videoTranscript',
-            'http://visallo.org#text'
-        ],
-        rangeUtils,
-        d3,
-        PREVIEW_SELECTORS = {
-            audio: 'div .audio-preview',
-            video: '.org-visallo-video'
-        };
+    const STYLE_STATES = { NORMAL: 0, HOVER: 1 };
+    const CONFIG_MAX_SELECTION_PARAGRAPHS =
+        config['detail.text.max.selection.paragraphs'] ?
+        parseInt(config['detail.text.max.selection.paragraphs'], 10) : 5;
+    const TEXT_PROPERTIES = [
+        'http://visallo.org#videoTranscript',
+        'http://visallo.org#text'
+    ];
+    const PREVIEW_SELECTORS = {
+        audio: 'div .audio-preview',
+        video: '.org-visallo-video'
+    };
+
+    const hasValidOffsets = data => {
+        return _.isObject(data) &&
+            _.isFinite(data.startOffset) &&
+            _.isFinite(data.endOffset) &&
+            data.startOffset >= 0 &&
+            data.endOffset > data.startOffset;
+    }
+
+    var rangeUtils, d3, textStylesheet;
 
     /**
      * Replaces the content of a collapsible text section in the element
@@ -65,7 +73,13 @@ define([
         return _.isFunction(e.shouldReplaceTextSectionForVertex) && _.isString(e.componentPath);
     }, 'http://docs.visallo.org/extension-points/front-end/detailText')
 
-    return defineComponent(Text, withDataRequest, withCollapsibleSections, withPropertyInfo);
+    return defineComponent(
+        Text,
+        withDataRequest,
+        withCollapsibleSections,
+        withPropertyInfo,
+        withElementScrollingPositionUpdates
+    );
 
     function descriptionProperty(p) {
         var textDescription = 'http://visallo.org#textDescription';
@@ -86,8 +100,8 @@ define([
     function Text() {
 
         this.attributes({
-            resolvableSelector: '.vertex, .property',
-            resolvedSelector: '.vertex.resolved',
+            termsSelector: '.jref,.resolved,.resolvable',
+            resolvedSelector: '.resolved',
             textSelector: '.text',
             avLinkSelector: '.av-link',
             detailSectionContainerSelector: '.org-visallo-layout-body',
@@ -101,10 +115,25 @@ define([
             if (this.textExtension) {
                 this.textExtension.teardown();
             }
+            this.$node.off('mouseleave', this.attr.termsSelector);
         });
 
         this.after('initialize', function() {
             var self = this;
+            if (textStylesheet) {
+                textStylesheet.remove();
+            }
+            textStylesheet = stylesheet.addSheet();
+
+
+            this.loadRule = _.memoize(this.loadRule.bind(this), function(color, selector, state) {
+                return color + '|' + selector + '|' + state;
+            });
+
+            this.dataRequest('ontology', 'concepts').then(concepts => {
+                this.concepts = concepts;
+            })
+            this.on(document, 'ontologyUpdated', this.updateEntityAndArtifactDraggables);
 
             this.on('mousedown mouseup click dblclick contextmenu', this.trackMouse);
             this.on(document, 'keyup', this.handleKeyup);
@@ -132,7 +161,7 @@ define([
                 this.updateText();
             });
             this.on('click', {
-                resolvableSelector: this.onResolvableClick,
+                termsSelector: this.onTermClick,
                 avLinkSelector: this.onAVLinkClick
             });
             this.on('focusOnSnippet', this.onFocusOnSnippet);
@@ -143,12 +172,14 @@ define([
             this.on('dropdownClosed', this.onDropdownClosed);
             this.on(document, 'textUpdated', this.onTextUpdated);
 
+            this.on('mouseover', { termsSelector: this.onHoverOver });
+            this.$node.on('mouseleave', this.attr.termsSelector, this.onHoverLeave.bind(this));
+
             this.scrollNode = self.$node.scrollParent()
                 .css('position', 'relative')
                 .on('scrollstop', self.updateEntityAndArtifactDraggables)
                 .on('scroll', self.updateEntityAndArtifactDraggables);
             this.updateText();
-            this.applyHighlightStyle();
             this.updateEntityAndArtifactDraggables();
         });
 
@@ -210,7 +241,7 @@ define([
             if (!selection.isCollapsed && selection.rangeCount === 1) {
 
                 var data = this.transformSelection(selection);
-                if (data.startOffset && data.endOffset) {
+                if (hasValidOffsets(data)) {
                     this.trigger('copydocumenttext', data);
                 }
             }
@@ -229,7 +260,7 @@ define([
         this.trackMouse = function(event) {
             var $target = $(event.target);
 
-            if ($target.is('.resolved,.vertex')) {
+            if ($target.is('.resolved,.resolvable')) {
                 if (event.type === 'mousedown') {
                     rangeUtils.clearSelection();
                 }
@@ -318,8 +349,7 @@ define([
                         .data([1])
                         .call(function() {
                             this.enter().append('div');
-                            var style = HIGHLIGHT_STYLES[self.getActiveStyle()];
-                            this.attr('class', 'highlightWrap highlight-' + style.selector);
+                            this.attr('class', 'highlightWrap highlight-underline');
                         })
                         .selectAll('section.text-section')
                         .data(_.sortBy(textProperties, textPropertySort), textPropertyId)
@@ -333,7 +363,7 @@ define([
                                             this.append('strong');
                                             this.append('button').attr('class', 'info');
                                         });
-                                    this.append('div').attr('class', 'text');
+                                    this.append('div').attr('class', 'text visallo-allow-dblclick-selection');
                                 });
 
                             this.order();
@@ -405,7 +435,7 @@ define([
                 selection = getSelection(),
                 range = selection.rangeCount && selection.getRangeAt(0),
                 hasSelection = isExpanded && range && !range.collapsed,
-                hasOpenForm = isExpanded && $section.find('.underneath').length;
+                hasOpenForm = isExpanded && ($section.find('.underneath').length || $('.detail-text-terms-popover').length);
 
             if (hasSelection || hasOpenForm) {
                 this.reloadText = this.openText.bind(this, propertyKey, propertyName, options);
@@ -506,7 +536,6 @@ define([
                 } catch(e) { /*eslint no-empty:0*/ }
 
                 if (json && !_.isEmpty(json.entries)) {
-                    //this.currentTranscript = json;
                     return transcriptEntriesTemplate({
                         entries: _.map(json.entries, function(e) {
                             return {
@@ -524,11 +553,7 @@ define([
                 }
             }
 
-            return !text ? alertTemplate({ warning: warningText }) : this.normalizeString(text);
-        };
-
-        this.normalizeString = function(text) {
-            return text.replace(/(\n+)/g, '<br><br>$1');
+            return !text ? alertTemplate({ warning: warningText }) : text;
         };
 
         this.onDropdownClosed = function(event, data) {
@@ -547,14 +572,109 @@ define([
             }
         };
 
-        this.onResolvableClick = function(event) {
+        this.onHoverOver = function(event) {
+            this.setHoverTarget($(event.target).closest('.text'), event.target);
+        };
+
+        this.onHoverLeave = function(event) {
+            clearTimeout(this.hoverLeaveTimeout);
+            this.hoverLeaveTimeout = setTimeout(() => {
+                this.setHoverTarget($(event.target).closest('.text'));
+            }, 16);
+        };
+
+        this.setHoverTarget = function($text, target) {
+            if (target) {
+                clearTimeout(this.hoverLeaveTimeout);
+            }
+
+            const ref = target ? this.getElementRefId(target) : null;
+            if (ref !== this.currentHoverTarget) {
+                if (this.currentHoverTarget) {
+                    $text.removeClass(this.currentHoverTarget)
+                }
+                if (ref) {
+                    const refs = [ref];
+                    if (target) {
+                        let parent = target;
+                        while (!parent.classList.contains('text')) {
+                            const r = this.getElementRefId(parent);
+                            const info = this.getElementInfoUsingRef(parent);
+                            const type = info && info.conceptType;
+                            const concept = type && this.concepts.byId[type];
+                            const color = concept && concept.color || '#000000';
+                            const selector = '.text.' + r + ' .' + r;
+
+                            if (parent.classList.contains('res')) {
+                                this.loadRule(color, selector, STYLE_STATES.HOVER);
+                            } else if (parent.classList.contains('jref')) {
+                                this.loadRule('#0088cc', selector, STYLE_STATES.HOVER);
+                            }
+
+                            refs.push(r);
+                            parent = parent.parentNode;
+                        }
+                    }
+                    this.currentHoverTarget = refs.join(' ');
+                    $text.addClass(this.currentHoverTarget);
+                } else {
+                    this.currentHoverTarget = null;
+                }
+            }
+        };
+
+        this.getElementRefId = function(element) {
+            return element.dataset.refId ? element.dataset.refId : element.dataset.ref;
+        };
+
+        this.getElementInfoUsingRef = function(element) {
+            let info = element.dataset.info;
+            let ref = element.dataset.ref;
+            if (!info && ref) {
+                const fullInfo = $(element).closest('.text').find(`.${ref}[data-ref-id]`)[0]
+                if (fullInfo) {
+                    info = fullInfo.dataset.info;
+                } else {
+                    console.warn("Text contains a data-ref that doesn't exist in document", element);
+                }
+            }
+            return info ? JSON.parse(info) : null;
+        }
+
+        this.onTermClick = function(event) {
             var self = this,
                 $target = $(event.target);
 
             if ($target.is('.underneath') || $target.parents('.underneath').length) {
                 return;
             }
+            var sel = window.getSelection();
+            if (sel && sel.rangeCount === 1 && !sel.isCollapsed) {
+                return;
+            }
 
+            const $textSection = $target.closest('.text-section');
+            const clicked = $target.parentsUntil('.text', 'span').andSelf();
+            const terms = [];
+            clicked.each(function() {
+                const info = self.getElementInfoUsingRef(this);
+                if (info) {
+                    terms.push(info)
+                } else {
+                    console.warn('Mention does not contain a data-info attribute', this);
+                }
+            })
+
+            this.popover({
+                node: $target,
+                terms,
+                propertyKey: $textSection.data('key'),
+                propertyName: $textSection.data('name'),
+                artifactId: self.model.id
+            });
+
+            /*
+            TODO: implement these in Term.jsx
             requireAndCleanupActionBar().then(function(ActionBar) {
                 var $text = $target.closest('.text'),
                     $textOffset = $text.closest('.nav-with-background').offset();
@@ -628,7 +748,17 @@ define([
                     })
                 }
             });
+            */
         };
+
+        this.getOffsets = function(root, range) {
+            var rangeRelativeToText = range.cloneRange();
+            rangeRelativeToText.selectNodeContents(root);
+            rangeRelativeToText.setEnd(range.startContainer, range.startOffset);
+            var mentionStart = rangeRelativeToText.toString().length;
+            var mentionEnd = mentionStart + range.toString().length
+            return { mentionStart, mentionEnd };
+        }
 
         this.handleSelectionChange = _.debounce(function() {
             var sel = window.getSelection(),
@@ -640,17 +770,20 @@ define([
             if (text && text.length > 0) {
                 var anchor = $(sel.anchorNode),
                     focus = $(sel.focusNode),
-                    is = '.detail-pane .text';
+                    is = '.detail-pane .text',
+                    $anchorText = anchor.is(is) ? anchor : anchor.parents(is),
+                    $focusText = focus.is(is) ? focus : focus.parents(is),
+                    textContainer = $anchorText[0] || $focusText[0];
 
                 // Ignore outside content text
-                if (anchor.parents(is).length === 0 || focus.parents(is).length === 0) {
+                if ($anchorText.length === 0 || $focusText.length === 0) {
                     this.checkIfReloadNeeded();
                     return;
                 }
 
                 // Ignore if too long of selection
-                var wordLength = text.split(/\s+/).length;
-                if (wordLength > 10) {
+                var maxParagraphs = _.compact(text.replace(/(\s*<br>\s*)+/g, '\n').split('\n'));
+                if (maxParagraphs.length > CONFIG_MAX_SELECTION_PARAGRAPHS) {
                     return requireAndCleanupActionBar();
                 }
 
@@ -659,32 +792,48 @@ define([
                     return;
                 }
 
-                var range = sel.getRangeAt(0),
-                    // Avoid adding dropdown inside of entity
-                    endContainer = range.endContainer;
-
-                while (/vertex/.test(endContainer.parentNode.className)) {
-                    if (/text/.test(endContainer.parentNode.className)) break;
-                    endContainer = endContainer.parentNode;
+                if (Privileges.missingEDIT) {
+                    return;
                 }
 
-                var self = this,
-                    selection = sel && {
-                        anchor: sel.anchorNode,
-                        focus: sel.focusNode,
-                        anchorOffset: sel.anchorOffset,
-                        focusOffset: sel.focusOffset,
-                        range: sel.rangeCount && sel.getRangeAt(0).cloneRange()
-                    };
-
                 // Don't show action bar if dropdown opened
-                if (this.$node.find('.text.dropdown').length) return;
+                if (this.$node.find('.text.dropdown').length) {
+                    return;
+                }
 
-                if (Privileges.missingEDIT) return;
+                var range = sel.rangeCount && sel.getRangeAt(0);
 
-                var $text = anchor.closest(is),
+                if (!range) {
+                    return;
+                }
+                const { mentionStart, mentionEnd } = this.getOffsets(textContainer, range);
+
+                var self = this;
+                var $text = $(textContainer),
+                    $textSection = $text.closest('.text-section'),
                     $textOffset = $text.closest('.nav-with-background').offset();
+
+                const anchorTo = { range: range.cloneRange() };
+                const selection = {
+                    sign: text,
+                    mentionStart,
+                    mentionEnd,
+                    snippet: rangeUtils.createSnippetFromRange(range, undefined, textContainer)
+                };
+
+                this.popover({
+                    node: textContainer,
+                    anchorTo,
+                    selection,
+                    propertyKey: $textSection.data('key'),
+                    propertyName: $textSection.data('name'),
+                    artifactId: self.model.id
+                })
+
+                /*
+                 * TODO: Move to TermSelection
                 requireAndCleanupActionBar().then(function(ActionBar) {
+
                     ActionBar.attachTo(self.node, {
                         alignTo: 'textselection',
                         alignWithin: $text,
@@ -701,7 +850,7 @@ define([
                         event.stopPropagation();
 
                         var data = self.transformSelection(sel);
-                        if (data.startOffset && data.endOffset) {
+                        if (hasValidOffsets(data)) {
                             self.trigger('commentOnSelection', data);
                         }
                     })
@@ -719,7 +868,8 @@ define([
                         self.dropdownEntity({
                             creating: true,
                             insertAfterNode: getNode(endContainer),
-                            selection: selection,
+                            mentionStart,
+                            mentionEnd,
                             text: text});
                     });
 
@@ -742,10 +892,26 @@ define([
                         }
                     }
                 });
+                */
             } else {
                 this.checkIfReloadNeeded();
             }
         }, 250);
+
+        this.popover = function({ node, ...options }) {
+            if (this.TextPopover && $(node).lookupComponent(this.TextPopover)) {
+                return;
+            }
+            require(['./popover/popover'], TextPopover => {
+                this.TextPopover = TextPopover;
+                TextPopover.teardownAll();
+                TextPopover.attachTo(node, {
+                    keepInView: true,
+                    preferredPosition: 'below',
+                    ...options
+                });
+            })
+        }
 
         this.tearDownDropdowns = function() {
             this.$node.find('.underneath').teardownAllComponents();
@@ -770,6 +936,8 @@ define([
                     propertyName: $textSection.data('name'),
                     selection: data.selection,
                     mentionNode: data.insertAfterNode,
+                    mentionStart: data.mentionStart,
+                    mentionEnd: data.mentionEnd,
                     snippet: data.selection ?
                         rangeUtils.createSnippetFromRange(data.selection.range, undefined, $textBody[0]) :
                         rangeUtils.createSnippetFromNode(data.insertAfterNode[0], undefined, $textBody[0]),
@@ -825,17 +993,19 @@ define([
         this.transformSelection = function(selection) {
             var $anchor = $(selection.anchorNode),
                 $focus = $(selection.focusNode),
+                textContainer = $anchor.closest('.text')[0],
                 isTranscript = $anchor.closest('.av-times').length,
                 offsetsFunction = isTranscript ?
                     'offsetsForTranscript' :
                     'offsetsForText',
-                offsets = this[offsetsFunction]([
-                    {el: $anchor, offset: selection.anchorOffset},
-                    {el: $focus, offset: selection.focusOffset}
-                ], '.text', _.identity),
                 range = selection.getRangeAt(0),
+                rangeOffsets = this.getOffsets(textContainer, range),
+                offsets = this[offsetsFunction]([
+                    {el: $anchor, offset: rangeOffsets.mentionStart },
+                    {el: $focus, offset: rangeOffsets.mentionEnd }
+                ], '.text', _.identity),
                 contextHighlight = rangeUtils.createSnippetFromRange(
-                    range, undefined, $anchor.closest('.text')[0]
+                    range, undefined, textContainer
                 );
 
             return {
@@ -851,42 +1021,7 @@ define([
         };
 
         this.offsetsForText = function(input, parentSelector, offsetTransform) {
-            var offsets = [];
-            input.forEach(function(node) {
-                var parentInfo = node.el.closest('.vertex').data('info'),
-                    offset = 0;
-
-                if (parentInfo) {
-                    offset = offsetTransform(parentInfo.start);
-                } else {
-                    var previousEntity = node.el.prevAll('.vertex').first(),
-                    previousInfo = previousEntity.data('info'),
-                    dom = previousInfo ?
-                        previousEntity.get(0) :
-                        node.el.closest(parentSelector)[0].childNodes[0],
-                    el = node.el.get(0);
-
-                    if (previousInfo) {
-                        offset = offsetTransform(previousInfo.end);
-                        dom = dom.nextSibling;
-                    }
-
-                    while (dom && dom !== el) {
-                        if (dom.nodeType === 3) {
-                            offset += dom.length;
-                        } else {
-                            offset += dom.textContent.length;
-                        }
-                        dom = dom.nextSibling;
-                    }
-                }
-
-                offsets.push(offset + node.offset);
-            });
-
-            return _.sortBy(offsets, function(a, b) {
-                return a - b
-            });
+            return input.map(i => i.offset);
         };
 
         this.offsetsForTranscript = function(input) {
@@ -925,213 +1060,137 @@ define([
                 return;
             }
 
-            this.dataRequest('ontology', 'concepts')
-                .done(function(concepts) {
-                    var currentlyDragging = null;
+            var currentlyDragging = null;
 
-                    validWords
-                        .each(function() {
-                            var $this = $(this),
-                                info = $this.data('info'),
-                                type = info && info['http://visallo.org#conceptType'],
-                                concept = type && concepts.byId[type];
+            validWords
+                .each(function() {
+                    var info = self.getElementInfoUsingRef(this),
+                        type = info && info.conceptType,
+                        concept = type && self.concepts.byId[type];
 
-                            if (concept) {
-                                $this.removePrefixedClasses('conceptId-').addClass(concept.className)
+                    if (concept) {
+                        this.classList.forEach(className => {
+                            if (className.indexOf('conceptId-') === 0 && className !== concept.className) {
+                                this.classList.remove(className);
                             }
-
-                            $this.attr('draggable', true)
-                                .off('dragstart dragend')
-                                .on('dragstart', function(event) {
-                                    const dt = event.originalEvent.dataTransfer;
-                                    const elements = { vertexIds: [info.resolvedToVertexId], edgeIds: [] };
-                                    dt.effectAllowed = 'all';
-                                    dnd.setDataTransferWithElements(dt, elements);
-                                    $(this).closest('.text').addClass('drag-focus');
-                                    currentlyDragging = event.target;
-                                })
-                                .on('dragend', function() {
-                                    $(this).closest('.text').removeClass('drag-focus');
-                                });
-                        })
-
-                    if (Privileges.canEDIT) {
-
-                        words
-                            .off('dragover drop dragenter dragleave')
-                            .on('dragover', function(event) {
-                                if (event.target.classList.contains('resolved')) {
-                                    event.preventDefault();
-                                }
-                            })
-                            .on('dragenter dragleave', function(event) {
-                                if (event.target.classList.contains('resolved')) {
-                                    $(event.target).toggleClass('drop-hover', event.type === 'dragenter');
-                                }
-                            })
-                            .on('drop', function(event) {
-                                event.preventDefault();
-                                $(event.target).removeClass('drop-hover');
-
-                                if (!currentlyDragging) {
-                                    throw new Error('Cannot drag from other detail panes.')
-                                }
-
-                                if (event.target.classList.contains('resolved')) {
-                                    var destTerm = $(event.target),
-                                        form;
-
-                                    if (destTerm.hasClass('opens-dropdown')) {
-                                        form = $('<div class="underneath"/>')
-                                            .insertAfter(destTerm.closest('.detected-object-labels'));
-                                    } else {
-                                        form = $('<div class="underneath"/>').insertAfter(destTerm);
-                                    }
-                                    self.tearDownDropdowns();
-                                    self.disableSelection = true;
-
-                                    require(['../dropdowns/statementForm/statementForm'], function(StatementForm) {
-                                        StatementForm.attachTo(form, {
-                                            sourceTerm: $(currentlyDragging),
-                                            destTerm: destTerm
-                                        });
-                                    })
-                                }
-                            })
-                    }
-                });
-        };
-
-        this.highlightNode = function() {
-            return this.$node.children('.highlightWrap');
-        };
-
-        this.getActiveStyle = function() {
-            if (useDefaultStyle) {
-                return DEFAULT;
-            }
-
-            var content = this.highlightNode(),
-                index = 0;
-            $.each(content.attr('class').split(/\s+/), function(_, item) {
-                var match = item.match(/^highlight-(.+)$/);
-                if (match) {
-                    return HIGHLIGHT_STYLES.forEach(function(style, i) {
-                        if (style.selector === match[1]) {
-                            index = i;
-                            return false;
-                        }
-                    });
-                }
-            });
-
-            return index;
-        };
-
-        this.applyHighlightStyle = function() {
-            var style = HIGHLIGHT_STYLES[this.getActiveStyle()];
-            if (!style.styleApplied) {
-                this.dataRequest('ontology', 'concepts').done(function(concepts) {
-                    var styleFile = 'detail/text/highlight-styles/' + style.selector + '.hbs',
-                        detectedObjectStyleFile = 'detail/text/highlight-styles/detectedObject.hbs';
-
-                    require([styleFile, detectedObjectStyleFile], function(tpl, doTpl) {
-                        function apply(concept) {
-                            if (concept.color) {
-                                var STATES = {
-                                        NORMAL: 0,
-                                        HOVER: 1,
-                                        DIM: 2,
-                                        TERM: 3
-                                    },
-                                    className = concept.rawClassName ||
-                                        (concept.className && ('vertex.' + concept.className)),
-                                    definition = function(state, template) {
-                                        return (template || tpl)({
-                                            ...(_.object(_.map(STATES, (v, k) => [k.toLowerCase(), v === state]))),
-                                            normalOrHover: (state === STATES.NORMAL || state === STATES.HOVER),
-                                            colors: {
-                                                normal: colorjs(concept.color).setAlpha(1.0),
-                                                dim: colorjs(concept.color).setAlpha(0.2).setSaturation(0.2),
-                                                hover: colorjs(concept.color).setAlpha(0.3),
-                                                detectedObjects: {
-                                                    background: colorjs(concept.color).darkenByRatio(0.6).setAlpha(0.1),
-                                                    foreground: colorjs(concept.color).darkenByRatio(0.3).desaturateByRatio(0.5)
-                                                }
-                                            },
-                                            concept: concept
-                                        });
-                                    };
-
-                                if (!className) {
-                                    return;
-                                }
-
-                                // Dim
-                                // (when dropdown is opened and it wasn't this entity)
-                                stylesheet.addRule(
-                                    '.highlight-' + style.selector + ' .dropdown .' + className + ',' +
-                                    '.highlight-' + style.selector + ' .dropdown .resolved.' + className + ',' +
-                                    '.highlight-' + style.selector + ' .drag-focus .' + className,
-                                    definition(STATES.DIM)
-                                );
-
-                                stylesheet.addRule(
-                                   '.highlight-' + style.selector + ' .' + className,
-                                   definition(STATES.TERM)
-                                );
-
-                                // Default style (or focused)
-                                stylesheet.addRule(
-                                    '.highlight-' + style.selector + ' .resolved.' + className + ',' +
-                                    '.highlight-' + style.selector + ' .drag-focus .resolved.' + className + ',' +
-                                    '.highlight-' + style.selector + ' .dropdown .focused.' + className,
-                                    definition(STATES.NORMAL)
-                                );
-
-                                // Drag-drop hover
-                                stylesheet.addRule(
-                                    '.highlight-' + style.selector + ' .drop-hover.' + className,
-                                    definition(STATES.HOVER)
-                                );
-
-                                // Detected objects
-                                stylesheet.addRule(
-                                    '.highlight-' + style.selector + ' .detected-object.' + className + ',' +
-                                    '.highlight-' + style.selector + ' .detected-object.resolved.' + className,
-                                    definition(STATES.DIM, doTpl)
-                                );
-                                stylesheet.addRule(
-                                    //'.highlight-' + style.selector + ' .detected-object.' + className + ',' +
-                                    //'.highlight-' + style.selector + ' .detected-object.resolved.' + className + ',' +
-                                    '.highlight-' + style.selector + ' .focused .detected-object.' + className + ',' +
-                                    '.highlight-' + style.selector + ' .focused .detected-object.resolved.' + className,
-                                    definition(STATES.NORMAL, doTpl)
-                                );
-
-                                stylesheet.addRule(
-                                    '.concepticon-' + (concept.className || concept.rawClassName),
-                                    'background-image: url(' + concept.glyphIconHref + ')'
-                                );
-                            }
-                            if (concept.children) {
-                                concept.children.forEach(apply);
-                            }
-                        }
-
-                        apply(concepts.entityConcept);
-
-                        // Artifacts
-                        apply({
-                            rawClassName: 'artifact',
-                            color: 'rgb(255,0,0)',
-                            glyphIconHref: '../img/glyphicons/glyphicons_036_file@2x.png'
                         });
+                        if (!this.classList.contains(concept.className)) {
+                            this.classList.add(concept.className);
+                            self.loadSelectorForConcept(concept);
+                        }
+                    }
 
-                        style.styleApplied = true;
-                    });
-                });
+                    /*
+                    $this.attr('draggable', true)
+                        .off('dragstart dragend')
+                        .on('dragstart', function(event) {
+                            const dt = event.originalEvent.dataTransfer;
+                            const elements = { vertexIds: [info.resolvedToVertexId], edgeIds: [] };
+                            dt.effectAllowed = 'all';
+                            dnd.setDataTransferWithElements(dt, elements);
+                            $(this).closest('.text').addClass('drag-focus');
+                            currentlyDragging = event.target;
+                        })
+                        .on('dragend', function() {
+                            $(this).closest('.text').removeClass('drag-focus');
+                        });
+                        */
+                })
+
+            if (Privileges.canEDIT) {
+
+                words
+                    .off('dragover drop dragenter dragleave')
+                    .on('dragover', function(event) {
+                        if (event.target.classList.contains('resolved')) {
+                            event.preventDefault();
+                        }
+                    })
+                    .on('dragenter dragleave', function(event) {
+                        if (event.target.classList.contains('resolved')) {
+                            $(event.target).toggleClass('drop-hover', event.type === 'dragenter');
+                        }
+                    })
+                    .on('drop', function(event) {
+                        event.preventDefault();
+                        $(event.target).removeClass('drop-hover');
+
+                        if (!currentlyDragging) {
+                            throw new Error('Cannot drag from other detail panes.')
+                        }
+
+                        if (event.target.classList.contains('resolved')) {
+                            var destTerm = $(event.target),
+                                form;
+
+                            if (destTerm.hasClass('opens-dropdown')) {
+                                form = $('<div class="underneath"/>')
+                                    .insertAfter(destTerm.closest('.detected-object-labels'));
+                            } else {
+                                form = $('<div class="underneath"/>').insertAfter(destTerm);
+                            }
+                            self.tearDownDropdowns();
+                            self.disableSelection = true;
+
+                            require(['../dropdowns/statementForm/statementForm'], function(StatementForm) {
+                                StatementForm.attachTo(form, {
+                                    sourceTerm: $(currentlyDragging),
+                                    destTerm: destTerm
+                                });
+                            })
+                        }
+                    })
             }
+        };
+
+        this.loadSelectorForConcept = function(concept) {
+            //if (!this._loadedConcepts) {
+                //this._loadedConcepts = {};
+            //}
+
+            if (/*concept.id in this._loadedConcepts || */!concept.color) {
+                return;
+            }
+            //this._loadedConcepts[concept.id] = true;
+
+            const className = concept.rawClassName || concept.className;
+            if (!className) {
+                return;
+            }
+
+            const conceptColor = colorjs(concept.color);
+            if (conceptColor.red === 0 && conceptColor.green === 0 & conceptColor.blue === 0) {
+                return;
+            }
+
+            this.loadRule(concept.color, '.highlight-underline .res.' + className, STYLE_STATES.NORMAL);
+            window._loadRule = (el, selector, state) => {
+                var info = this.getElementInfoUsingRef(el),
+                    type = info && info.conceptType,
+                    concept = type && this.concepts.byId[type],
+                    color = concept && concept.color || '#000000';
+
+                if (el.classList.contains('res')) {
+                    this.loadRule(color, selector, state);
+                } else {
+                    this.loadRule('#0088cc', selector, state);
+                }
+            };
+        };
+
+        this.loadRule = function(color, selector, state) {
+            require(['detail/text/highlight-styles/underline.hbs'], tpl => {
+                const definition = function(state, template) {
+                    return (template || tpl)({
+                        ...(_.object(_.map(STYLE_STATES, (v, k) => [k.toLowerCase(), v === state]))),
+                        colors: {
+                            normal: colorjs(color).setAlpha(1.0),
+                            hover: colorjs(color).setAlpha(0.1)
+                        }
+                    });
+                };
+                textStylesheet.addRule(selector, definition(state));
+            });
         };
 
         this.scrollToRevealSection = function($section) {

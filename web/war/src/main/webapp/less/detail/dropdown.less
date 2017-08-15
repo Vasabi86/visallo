@@ -4,6 +4,19 @@
     color: white;
   }
 
+  .buttons {
+    clear: both;
+    text-align: right;
+
+    .btn-danger { float: left; }
+
+    .badge.loading {
+      float: none;
+      position: relative;
+      top: 1ex;
+    }
+  }
+
   .previous-values-container {
     position: relative;
 
@@ -159,6 +172,9 @@
 
       &.loading {
         left: auto;
+        right: 5px;
+        top: 50%;
+        transform: translate(0, -50%);
       }
     }
   }
@@ -174,6 +190,9 @@
     .concept-type { 
       color: #999;
       font-size: 80%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .existing {

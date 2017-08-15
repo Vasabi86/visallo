@@ -24,6 +24,9 @@ import org.visallo.core.util.VisalloLoggerFactory;
 import org.visallo.web.VisalloResponse;
 import org.visallo.web.parameterProviders.ActiveWorkspaceId;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
 public class VertexHighlightedText implements ParameterizedHandler {
     private static final VisalloLogger LOGGER = VisalloLoggerFactory.getLogger(VertexHighlightedText.class);
     private final Graph graph;
@@ -42,7 +45,7 @@ public class VertexHighlightedText implements ParameterizedHandler {
     }
 
     @Handle
-    public String handle(
+    public void handle(
             @Required(name = "graphVertexId") String graphVertexId,
             @Required(name = "propertyKey") String propertyKey,
             @Optional(name = "propertyName") String propertyName,
@@ -64,18 +67,17 @@ public class VertexHighlightedText implements ParameterizedHandler {
 
         StreamingPropertyValue textPropertyValue = (StreamingPropertyValue) artifactVertex.getPropertyValue(propertyKey, propertyName);
         if (textPropertyValue != null) {
+            response.setContentType("text/html");
+
             LOGGER.debug("returning text for vertexId:%s property:%s", artifactVertex.getId(), propertyKey);
-            String highlightedText;
-            String text = IOUtils.toString(textPropertyValue.getInputStream(), "UTF-8");
-            if (text == null) {
-                highlightedText = "";
+            InputStream inputStream = textPropertyValue.getInputStream();
+
+            if (inputStream == null) {
+                response.respondWithHtml("");
             } else {
                 Iterable<Vertex> termMentions = termMentionRepository.findByOutVertexAndProperty(artifactVertex.getId(), propertyKey, propertyName, authorizationsWithTermMention);
-                highlightedText = entityHighlighter.getHighlightedText(text, termMentions, workspaceId, authorizationsWithTermMention);
+                entityHighlighter.transformHighlightedText(inputStream, response.getOutputStream(), termMentions, workspaceId, authorizationsWithTermMention);
             }
-
-            response.setContentType("text/html");
-            return highlightedText;
         }
 
         VideoTranscript videoTranscript = MediaVisalloProperties.VIDEO_TRANSCRIPT.getPropertyValue(artifactVertex, propertyKey);
@@ -84,7 +86,7 @@ public class VertexHighlightedText implements ParameterizedHandler {
             Iterable<Vertex> termMentions = termMentionRepository.findByOutVertexAndProperty(artifactVertex.getId(), propertyKey, propertyName, authorizations);
             VideoTranscript highlightedVideoTranscript = entityHighlighter.getHighlightedVideoTranscript(videoTranscript, termMentions, workspaceId, authorizations);
             response.setContentType("application/json");
-            return highlightedVideoTranscript.toJson().toString();
+            response.respondWithJson(highlightedVideoTranscript.toJson());
         }
 
         videoTranscript = JsonSerializer.getSynthesisedVideoTranscription(artifactVertex, propertyKey);
@@ -93,9 +95,7 @@ public class VertexHighlightedText implements ParameterizedHandler {
             Iterable<Vertex> termMentions = termMentionRepository.findByOutVertexAndProperty(artifactVertex.getId(), propertyKey, propertyName, authorizations);
             VideoTranscript highlightedVideoTranscript = entityHighlighter.getHighlightedVideoTranscript(videoTranscript, termMentions, workspaceId, authorizationsWithTermMention);
             response.setContentType("application/json");
-            return highlightedVideoTranscript.toJson().toString();
+            response.respondWithJson(highlightedVideoTranscript.toJson());
         }
-
-        return null;
     }
 }

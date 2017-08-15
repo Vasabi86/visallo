@@ -4,6 +4,9 @@ define([
 ], function(defineComponent) {
     'use strict';
 
+    const IGNORE_SELECTORS = 'input,select,option,textarea,.Select,.Select *,.visallo-allow-focus,.visallo-allow-focus *';
+    const WAIT_FOR_DBLCLICK_SELECTORS = '.visallo-allow-dblclick-selection, .visallo-allow-dblclick-selection *';
+
     return defineComponent(ClipboardManager);
 
     /**
@@ -44,7 +47,8 @@ define([
                 })
                 .appendTo(document.body);
 
-            this.on('click', this._onClick);
+            this.on('click', this.onClick);
+            this.on('dblclick', this.onClick);
             this.on('clipboardClear', this.clear);
             this.on('clipboardSet', this.set);
             this.on('clipboardFocus', this.focus);
@@ -128,19 +132,61 @@ define([
             this.trigger('clipboardCut', { data: val });
         };
 
-        this._onClick = function(event) {
-            if ($(event.target).is('input,select,option,textarea,.Select,.Select *,.visallo-allow-focus,.visallo-allow-focus *')) return;
+        this.onClick = function(event) {
+            const $target = $(event.target);
 
+            if ($target.is(IGNORE_SELECTORS)) {
+                return;
+            }
+
+            if ($target.is(WAIT_FOR_DBLCLICK_SELECTORS)) {
+                this.waitForDblClick(event);
+                return;
+            }
+
+            if (event.type === 'dblclick') {
+                return;
+            }
+
+            this.returnFocus(event.target)
+        };
+
+        this.waitForDblClick = function(event) {
+            const { target, timeStamp } = event;
+            const cleanup = () => {
+                if (this._dblClickTimer) {
+                    clearTimeout(this._dblClickTimer);
+                    this._dblClickTimer = null;
+                }
+                this.previousTimestamp = null;
+            }
+            const selection = getSelection();
+
+            if (event.type === 'dblclick') {
+                cleanup();
+                if (selection.isCollapsed) {
+                    this.returnFocus(target)
+                }
+            } else if (!this.previousTimestamp) {
+                this.previousTimestamp = timeStamp;
+                this._dblClickTimer = _.delay(() => {
+                    this.returnFocus(target);
+                    cleanup();
+                }, 250);
+            }
+        };
+
+        this.returnFocus = function(target) {
             var inFocus = $(':focus');
             // Check for previous focus, since we are going to steal it to
             // support browser cut/copy/paste events
             if (inFocus.length) {
                 this.trigger(inFocus[0], 'focusLostByClipboard');
             } else {
-                this.trigger(event.target, 'focusLostByClipboard');
+                this.trigger(target, 'focusLostByClipboard');
             }
 
-            if (window.getSelection().isCollapsed === false) return;
+            if (getSelection().isCollapsed === false) return;
 
             this.focus();
         };

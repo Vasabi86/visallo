@@ -68,8 +68,10 @@ define(['util/withFormFieldErrors'], function(withFormFieldErrors) {
 
         this.after('teardown', function() {
             this.trigger('dropdownClosed');
-            this.$node.closest('.text').removeClass('dropdown');
-            this.$node.remove();
+            if (!this.attr.disableDropdownFeatures) {
+                this.$node.closest('.text').removeClass('dropdown');
+                this.$node.remove();
+            }
         });
 
         this.buttonLoading = function(selector) {
@@ -89,15 +91,23 @@ define(['util/withFormFieldErrors'], function(withFormFieldErrors) {
         }
 
         this.after('initialize', function() {
-            this.$node.closest('.text').addClass('dropdown');
-            this.on('click', {
-                cancelButtonSelector: function() {
-                    this.trigger('closeDropdown');
-                    this.teardown();
+            if (this.attr.disableDropdownFeatures) {
+                this.on('click', {
+                    cancelButtonSelector: function() {
+                        this.trigger('closeDropdown');
+                    }
+                });
+            } else {
+                this.$node.closest('.text').addClass('dropdown');
+                this.on('click', {
+                    cancelButtonSelector: function() {
+                        this.trigger('closeDropdown');
+                        this.teardown();
+                    }
+                });
+                if (!this.attr.manualOpen) {
+                    _.defer(this.open.bind(this));
                 }
-            });
-            if (!this.attr.manualOpen) {
-                _.defer(this.open.bind(this));
             }
         });
     }

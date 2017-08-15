@@ -7,7 +7,12 @@ import com.v5analytics.webster.annotations.Optional;
 import com.v5analytics.webster.annotations.Required;
 import org.vertexium.*;
 import org.vertexium.mutation.ElementMutation;
+import org.visallo.core.exception.VisalloException;
+import org.visallo.core.model.Name;
 import org.visallo.core.model.PropertyJustificationMetadata;
+import org.visallo.core.model.graph.ElementUpdateContext;
+import org.visallo.core.model.graph.GraphRepository;
+import org.visallo.core.model.graph.GraphUpdateContext;
 import org.visallo.core.model.ontology.Concept;
 import org.visallo.core.model.ontology.OntologyRepository;
 import org.visallo.core.model.properties.VisalloProperties;
@@ -30,9 +35,11 @@ import org.visallo.web.util.VisibilityValidator;
 import java.util.Date;
 import java.util.ResourceBundle;
 
+@Name("Resolve Term Endpoint")
 public class ResolveTermEntity implements ParameterizedHandler {
     private static final String MULTI_VALUE_KEY = ResolveTermEntity.class.getName();
     private final Graph graph;
+    private final GraphRepository graphRepository;
     private final OntologyRepository ontologyRepository;
     private final VisibilityTranslator visibilityTranslator;
     private final WorkspaceRepository workspaceRepository;
@@ -40,13 +47,15 @@ public class ResolveTermEntity implements ParameterizedHandler {
 
     @Inject
     public ResolveTermEntity(
-            final Graph graphRepository,
+            final Graph graph,
+            final GraphRepository graphRepository,
             final OntologyRepository ontologyRepository,
             final VisibilityTranslator visibilityTranslator,
             final WorkspaceRepository workspaceRepository,
             final WorkQueueRepository workQueueRepository
     ) {
-        this.graph = graphRepository;
+        this.graph = graph;
+        this.graphRepository = graphRepository;
         this.ontologyRepository = ontologyRepository;
         this.visibilityTranslator = visibilityTranslator;
         this.workspaceRepository = workspaceRepository;
@@ -61,10 +70,11 @@ public class ResolveTermEntity implements ParameterizedHandler {
             @Required(name = "mentionStart") long mentionStart,
             @Required(name = "mentionEnd") long mentionEnd,
             @Required(name = "sign") String title,
-            @Required(name = "conceptId") String conceptId,
             @Required(name = "visibilitySource") String visibilitySource,
             @Optional(name = "resolvedVertexId") String resolvedVertexId,
             @Optional(name = "sourceInfo") String sourceInfoString,
+            @Optional(name = "conceptId") String conceptId,
+            @Optional(name = "resolvedFromTermMention") String resolvedFromTermMention,
             @JustificationText String justificationText,
             @ActiveWorkspaceId String workspaceId,
             ResourceBundle resourceBundle,
@@ -80,41 +90,47 @@ public class ResolveTermEntity implements ParameterizedHandler {
 
         String id = resolvedVertexId == null ? graph.getIdGenerator().nextId() : resolvedVertexId;
 
-        Concept concept = ontologyRepository.getConceptByIRI(conceptId, workspaceId);
-
         final Vertex artifactVertex = graph.getVertex(artifactId, authorizations);
         VisalloVisibility visalloVisibility = visibilityTranslator.toVisibility(visibilityJson);
         Metadata metadata = new Metadata();
         Visibility defaultVisibility = visibilityTranslator.getDefaultVisibility();
         VisalloProperties.VISIBILITY_JSON_METADATA.setMetadata(metadata, visibilityJson, defaultVisibility);
-        Vertex vertex;
-        if (resolvedVertexId != null) {
-            vertex = graph.getVertex(id, authorizations);
-        } else {
-            ElementMutation<Vertex> vertexMutation = graph.prepareVertex(id, visalloVisibility.getVisibility());
-            VisalloProperties.CONCEPT_TYPE.setProperty(vertexMutation, conceptId, defaultVisibility);
-            VisalloProperties.VISIBILITY_JSON.setProperty(vertexMutation, visibilityJson, defaultVisibility);
-            VisalloProperties.MODIFIED_BY.setProperty(vertexMutation, user.getUserId(), defaultVisibility);
-            VisalloProperties.MODIFIED_DATE.setProperty(vertexMutation, new Date(), defaultVisibility);
-            VisalloProperties.TITLE.addPropertyValue(vertexMutation, MULTI_VALUE_KEY, title, metadata, visalloVisibility.getVisibility());
 
-            if (justificationText != null) {
-                PropertyJustificationMetadata propertyJustificationMetadata = new PropertyJustificationMetadata(justificationText);
-                VisalloProperties.JUSTIFICATION.setProperty(vertexMutation, propertyJustificationMetadata, visalloVisibility.getVisibility());
+        Vertex vertex;
+        Edge edge;
+
+        try (GraphUpdateContext ctx = graphRepository.beginGraphUpdate(Priority.NORMAL, user, authorizations)) {
+
+            Date modifiedDate = new Date();
+
+            if (resolvedVertexId != null) {
+                vertex = graph.getVertex(id, authorizations);
+                conceptId = VisalloProperties.CONCEPT_TYPE.getPropertyValue(vertex);
+            } else {
+                if (conceptId == null) {
+                    throw new VisalloException("conceptId required when creating entity");
+                }
+
+
+                VertexBuilder builder = graph.prepareVertex(id, visalloVisibility.getVisibility());
+
+
+                vertex = ctx.update(builder, modifiedDate, visibilityJson, conceptId, elementCtx -> {
+                    VisalloProperties.TITLE.updateProperty(elementCtx, MULTI_VALUE_KEY, title, metadata, visalloVisibility.getVisibility());
+
+                    if (justificationText != null && sourceInfoString == null) {
+                        PropertyJustificationMetadata propertyJustificationMetadata = new PropertyJustificationMetadata(justificationText);
+                        VisalloProperties.JUSTIFICATION.updateProperty(elementCtx, propertyJustificationMetadata, visalloVisibility.getVisibility());
+                    }
+                }).get();
+
+                workspaceRepository.updateEntityOnWorkspace(workspace, vertex.getId(), user);
             }
 
-            vertex = vertexMutation.save(authorizations);
-
-            this.graph.flush();
-
-            workspaceRepository.updateEntityOnWorkspace(workspace, vertex.getId(), user);
+            EdgeBuilder edgeBuilder = graph.prepareEdge(artifactVertex, vertex, artifactHasEntityIri, visalloVisibility.getVisibility());
+            edge = ctx.update(edgeBuilder, modifiedDate, visibilityJson, edgeCtx -> {}).get();
         }
 
-        EdgeBuilder edgeBuilder = graph.prepareEdge(artifactVertex, vertex, artifactHasEntityIri, visalloVisibility.getVisibility());
-        VisalloProperties.MODIFIED_BY.setProperty(edgeBuilder, user.getUserId(), defaultVisibility);
-        VisalloProperties.MODIFIED_DATE.setProperty(edgeBuilder, new Date(), defaultVisibility);
-        VisalloProperties.VISIBILITY_JSON.setProperty(edgeBuilder, visibilityJson, defaultVisibility);
-        Edge edge = edgeBuilder.save(authorizations);
 
         ClientApiSourceInfo sourceInfo = ClientApiSourceInfo.fromString(sourceInfoString);
         new TermMentionBuilder()
@@ -125,15 +141,16 @@ public class ResolveTermEntity implements ParameterizedHandler {
                 .end(mentionEnd)
                 .title(title)
                 .snippet(sourceInfo == null ? null : sourceInfo.snippet)
-                .conceptIri(concept.getIRI())
+                .conceptIri(conceptId)
                 .visibilityJson(visibilityJson)
                 .resolvedTo(vertex, edge)
-                .process(getClass().getSimpleName())
+                .resolvedFromTermMention(resolvedFromTermMention)
+                .process(getClass().getName())
                 .save(this.graph, visibilityTranslator, user, authorizations);
 
         this.graph.flush();
         workQueueRepository.pushTextUpdated(artifactId);
-        workQueueRepository.pushElement(edge, Priority.HIGH);
+        workQueueRepository.pushElement(edge, Priority.NORMAL);
 
         return VisalloResponse.SUCCESS;
     }
