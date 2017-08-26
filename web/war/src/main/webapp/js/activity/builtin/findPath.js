@@ -97,7 +97,8 @@ define([
                         vertices = _.chain(paths).flatten().uniq().value();
 
                     self.trigger('focusPaths', {
-                        paths: paths,
+                        paths,
+                        labels: process.labels,
                         sourceId: self.attr.process.outVertexId,
                         targetId: self.attr.process.inVertexId,
                         processId: self.attr.process.id

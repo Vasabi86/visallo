@@ -1,6 +1,6 @@
 package org.visallo.web.routes.vertex;
 
-import com.google.common.io.Files;
+import com.google.common.base.Strings;
 import com.google.inject.Inject;
 import com.v5analytics.webster.ParameterizedHandler;
 import com.v5analytics.webster.annotations.Handle;
@@ -16,6 +16,7 @@ import org.vertexium.Authorizations;
 import org.vertexium.Graph;
 import org.vertexium.Vertex;
 import org.vertexium.Visibility;
+import org.visallo.core.config.Configuration;
 import org.visallo.core.exception.VisalloException;
 import org.visallo.core.ingest.FileImport;
 import org.visallo.core.model.workQueue.Priority;
@@ -36,8 +37,10 @@ import org.visallo.web.util.HttpPartUtil;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.Part;
 import java.io.File;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,11 +51,13 @@ public class VertexImport implements ParameterizedHandler {
     private static final VisalloLogger LOGGER = VisalloLoggerFactory.getLogger(VertexImport.class);
     private static final String PARAMS_FILENAME = "filename";
     private static final String UNKNOWN_FILENAME = "unknown_filename";
+    private static final String TEMP_DIR_CONFIG = VertexImport.class.getName() + ".tempDir";
     private final Graph graph;
     private final FileImport fileImport;
     private final WorkspaceRepository workspaceRepository;
     private final VisibilityTranslator visibilityTranslator;
     private final WorkspaceHelper workspaceHelper;
+    private Path uploadTempDir;
     private Authorizations authorizations;
 
     @Inject
@@ -61,35 +66,44 @@ public class VertexImport implements ParameterizedHandler {
             FileImport fileImport,
             WorkspaceRepository workspaceRepository,
             VisibilityTranslator visibilityTranslator,
-            WorkspaceHelper workspaceHelper
+            WorkspaceHelper workspaceHelper,
+            Configuration configuration
     ) {
         this.graph = graph;
         this.fileImport = fileImport;
         this.workspaceRepository = workspaceRepository;
         this.visibilityTranslator = visibilityTranslator;
         this.workspaceHelper = workspaceHelper;
+
+        try {
+            String configuredTempDir = configuration.get(TEMP_DIR_CONFIG, null);
+            if (Strings.isNullOrEmpty(configuredTempDir)) {
+                uploadTempDir = Files.createTempDirectory("VertexImport-");
+                uploadTempDir.toFile().deleteOnExit();
+            } else {
+                uploadTempDir = Paths.get(configuredTempDir);
+                if (!Files.exists(uploadTempDir)) {
+                    Files.createDirectories(uploadTempDir);
+                }
+            }
+        } catch (IOException ioe) {
+            throw new VisalloException("Unable to create temporary directory.", ioe);
+        }
     }
 
-    protected static String getFilename(Part part) {
-        String fileName = UNKNOWN_FILENAME;
-
-        final ParameterParser parser = new ParameterParser();
+    protected String getOriginalFilename(Part part) {
+        ParameterParser parser = new ParameterParser();
         parser.setLowerCaseNames(true);
 
         final Map params = parser.parse(part.getHeader(FileUploadBase.CONTENT_DISPOSITION), ';');
         if (params.containsKey(PARAMS_FILENAME)) {
-            final String name = (String) params.get(PARAMS_FILENAME);
-            if (name != null) {
-                try {
-                    fileName = URLDecoder.decode(name, "utf8").trim();
-                } catch (UnsupportedEncodingException ex) {
-                    LOGGER.error("Failed to url decode: " + name, ex);
-                    fileName = name.trim();
-                }
+            String name = (String) params.get(PARAMS_FILENAME);
+            if (!Strings.isNullOrEmpty(name)) {
+                return name;
             }
         }
 
-        return fileName;
+        return UNKNOWN_FILENAME;
     }
 
     @Handle
@@ -111,8 +125,9 @@ public class VertexImport implements ParameterizedHandler {
 
         this.authorizations = authorizations;
 
-        File tempDir = Files.createTempDir();
+        Path tempDir = null;
         try {
+            tempDir = Files.createTempDirectory(uploadTempDir, "upload-");
             List<FileImport.FileOptions> files = getFiles(request, tempDir, resourceBundle, authorizations, user);
             if (files == null) {
                 throw new BadRequestException("file", "Could not process request without files");
@@ -132,7 +147,9 @@ public class VertexImport implements ParameterizedHandler {
 
             return toArtifactImportResponse(vertices);
         } finally {
-            FileUtils.deleteDirectory(tempDir);
+            if (tempDir != null) {
+                FileUtils.deleteDirectory(tempDir.toFile());
+            }
         }
     }
 
@@ -146,7 +163,7 @@ public class VertexImport implements ParameterizedHandler {
 
     protected List<FileImport.FileOptions> getFiles(
             HttpServletRequest request,
-            File tempDir,
+            Path tempDir,
             ResourceBundle resourceBundle,
             Authorizations authorizations,
             User user
@@ -159,10 +176,10 @@ public class VertexImport implements ParameterizedHandler {
         AtomicInteger propertiesIndex = new AtomicInteger(0);
         for (Part part : request.getParts()) {
             if (part.getName().equals("file")) {
-                String fileName = getFilename(part);
-                File outFile = new File(tempDir, fileName);
+                String originalFileName = getOriginalFilename(part);
+                File outFile = Files.createTempFile(tempDir, null, null).toFile();
                 HttpPartUtil.copyPartToFile(part, outFile);
-                addFileToFilesList(files, fileIndex.getAndIncrement(), outFile);
+                addFileToFilesList(files, fileIndex.getAndIncrement(), outFile, originalFileName);
             } else if (part.getName().equals("conceptId")) {
                 String conceptId = IOUtils.toString(part.getInputStream(), "UTF8");
                 addConceptIdToFilesList(files, conceptIndex.getAndIncrement(), conceptId);
@@ -235,9 +252,11 @@ public class VertexImport implements ParameterizedHandler {
         files.get(index).setVisibilitySource(visibilitySource);
     }
 
-    protected void addFileToFilesList(List<FileImport.FileOptions> files, int index, File file) {
+    protected void addFileToFilesList(List<FileImport.FileOptions> files, int index, File file, String originalFilename) {
         ensureFilesSize(files, index);
-        files.get(index).setFile(file);
+        FileImport.FileOptions fileOptions = files.get(index);
+        fileOptions.setFile(file);
+        fileOptions.setOriginalFilename(originalFilename);
     }
 
     private void ensureFilesSize(List<FileImport.FileOptions> files, int index) {

@@ -52,23 +52,29 @@
       max-height: 25em;
     }
 
-    .popover-title .title, .popover-title .btn-link {
-      line-height: 1em;
-    } 
-    .popover-title .btn-link {
-      display: inline;
-      width: auto;
-      float: right;
-      margin: 0;
-      padding: 0;
-    }
+    .popover-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
 
-    .popover-title .find-path-form {
-      display: block;
-      float: right;
-      position: relative;
-      top: -0.3ex;
+      .title, .popover-title .btn-link {
+        line-height: 1em;
+      }
+      .btn-link {
+        display: inline;
+        width: auto;
+        float: right;
+        margin: 0;
+        padding: 0;
+      }
 
+      .find-path-form {
+        display: block;
+        float: right;
+        position: relative;
+        top: -0.3ex;
+
+      }
     }
 
     .find-path-form {

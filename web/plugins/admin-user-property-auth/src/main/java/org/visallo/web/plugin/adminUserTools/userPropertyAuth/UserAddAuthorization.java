@@ -15,6 +15,7 @@ import org.visallo.core.user.User;
 public class UserAddAuthorization implements ParameterizedHandler {
     private final AuthorizationRepository authorizationRepository;
     private final UserRepository userRepository;
+    private static final String SEPARATOR = ",";
 
     @Inject
     public UserAddAuthorization(
@@ -40,7 +41,10 @@ public class UserAddAuthorization implements ParameterizedHandler {
             throw new VisalloAccessDeniedException("Authorization repository does not support updating", authUser, userName);
         }
 
-        ((UpdatableAuthorizationRepository) authorizationRepository).addAuthorization(user, auth, authUser);
+        for (String authStr : auth.split(SEPARATOR)) {
+            ((UpdatableAuthorizationRepository) authorizationRepository).addAuthorization(user, authStr, authUser);
+        }
+
         return userRepository.toJsonWithAuths(user);
     }
 }

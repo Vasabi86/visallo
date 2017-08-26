@@ -6,47 +6,25 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import org.vertexium.Graph;
 import org.visallo.core.config.Configuration;
 import org.visallo.core.config.HashMapConfigurationLoader;
-import org.visallo.core.model.notification.UserNotificationRepository;
-import org.visallo.core.model.ontology.OntologyRepository;
-import org.visallo.core.model.workQueue.WorkQueueRepository;
 import org.visallo.core.user.User;
+import org.visallo.core.util.VisalloInMemoryTestBase;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class UserPropertyAuthorizationRepositoryTest {
+public class UserPropertyAuthorizationRepositoryTest extends VisalloInMemoryTestBase {
     private UserPropertyAuthorizationRepository userPropertyAuthorizationRepository;
 
     @Mock
-    private User user;
+    private User user1;
 
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private Graph graph;
-
-    @Mock
-    private OntologyRepository ontologyRepository;
-
-    @Mock
-    private UserNotificationRepository userNotificationRepository;
-
-    @Mock
-    private WorkQueueRepository workQueueRepository;
-
-    @Mock
-    private GraphAuthorizationRepository graphAuthorizationRepository;
+    private User user2;
 
     @Before
     public void before() {
@@ -58,30 +36,60 @@ public class UserPropertyAuthorizationRepositoryTest {
         Configuration configuration = new HashMapConfigurationLoader(config).createConfiguration();
 
         userPropertyAuthorizationRepository = new UserPropertyAuthorizationRepository(
-                graph,
-                ontologyRepository,
+                getGraph(),
+                getOntologyRepository(),
                 configuration,
-                userNotificationRepository,
-                workQueueRepository,
-                graphAuthorizationRepository
-        );
+                getUserNotificationRepository(),
+                getWorkQueueRepository(),
+                getGraphAuthorizationRepository()
+        ) {
+            @Override
+            protected UserRepository getUserRepository() {
+                return UserPropertyAuthorizationRepositoryTest.this.getUserRepository();
+            }
+        };
+
+        user2 = getUserRepository().findOrAddUser("user2", "User 2", "user2@visallo.com", "password");
+        userPropertyAuthorizationRepository.setAuthorizations(user2, Collections.emptySet(), user1);
     }
 
     @Test
     public void testGetAuthorizationsForNewUser() {
         HashSet<String> expected = Sets.newHashSet("userRepositoryAuthorization1", "userRepositoryAuthorization2");
 
-        Set<String> privileges = userPropertyAuthorizationRepository.getAuthorizations(user);
+        Set<String> privileges = userPropertyAuthorizationRepository.getAuthorizations(user1);
         assertEquals(expected, privileges);
     }
 
     @Test
     public void testGetAuthorizationsForExisting() {
         String[] authorizationsArray = {"userAuthorization1", "userAuthorization2", "userRepositoryAuthorization1", "userRepositoryAuthorization2"};
-        when(user.getProperty(eq(UserPropertyAuthorizationRepository.AUTHORIZATIONS_PROPERTY_IRI)))
+        when(user1.getProperty(eq(UserPropertyAuthorizationRepository.AUTHORIZATIONS_PROPERTY_IRI)))
                 .thenReturn("userAuthorization1,userAuthorization2");
 
-        Set<String> privileges = userPropertyAuthorizationRepository.getAuthorizations(user);
+        Set<String> privileges = userPropertyAuthorizationRepository.getAuthorizations(user1);
+        assertEquals(Sets.newHashSet(authorizationsArray), privileges);
+    }
+
+    @Test
+    public void testAddAuthorization() {
+        String[] authorizationsArray = {"newAuth", "userRepositoryAuthorization1", "userRepositoryAuthorization2"};
+        String authorization = "newAuth";
+
+        userPropertyAuthorizationRepository.addAuthorization(user2, authorization, user1);
+        Set<String> privileges = userPropertyAuthorizationRepository.getAuthorizations(user2);
+
+        assertEquals(Sets.newHashSet(authorizationsArray), privileges);
+    }
+
+    @Test
+    public void testAddAuthorizationShouldTrimWhitespace() {
+        String[] authorizationsArray = {"newAuth", "userRepositoryAuthorization1", "userRepositoryAuthorization2"};
+        String authorization = "  newAuth  \n";
+
+        userPropertyAuthorizationRepository.addAuthorization(user2, authorization, user1);
+        Set<String> privileges = userPropertyAuthorizationRepository.getAuthorizations(user2);
+
         assertEquals(Sets.newHashSet(authorizationsArray), privileges);
     }
 }

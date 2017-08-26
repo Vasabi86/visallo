@@ -823,11 +823,12 @@ define([
              * @param {object} value The value
              * @param {object} [options=] Additional string transforms. Any
              * function defined in {@link module:util/vertex/formatters.string}
-             * as the key and boolean if active
+             * as the key and boolean if active or an array of arguments to pass to the transform function
              * @returns {string} display value
              * @example
              * F.vertex.propDisplay(name, value, {
-             *     prettyPrint: true
+             *     prettyPrint: true,
+             *     plural: ['person', 'people']
              * })
              */
             propDisplay: function(name, value, options) {
@@ -877,11 +878,16 @@ define([
                     default:
 
                         if (options && _.isObject(options)) {
-                            return _.reduce(options, function(val, enabled, transformName) {
-                                if (enabled === true &&
+                            return _.reduce(options, function(val, transform, transformName) {
+                                if (transform &&
                                     transformName in F.string &&
                                     _.isFunction(F.string[transformName])) {
-                                    return F.string[transformName](val);
+                                        if (_.isArray(transform)) {
+                                            var args = [val].concat(transform);
+                                            return F.string[transformName].apply(this, args);
+                                        } else {
+                                            return F.string[transformName](val);
+                                        }
                                 }
                                 return val;
                             }, value)

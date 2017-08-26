@@ -60,9 +60,12 @@ All popups have interaction disabled with `pointer-events: none`, so one change 
 
 ## String Component
 
-`org.visallo.layout.text` is defined as a helper to render string models. The model passed to it is transformed to a string using `String(model)`. You can also specify a text `style`, which sets a css class with builtin text styling.
+`org.visallo.layout.text` is defined as a helper to render string models. The model passed to it is transformed to a string using `String(model)`.
 
+You can specify a text `style`, which sets a css class with builtin text styling.
 Valid Style options: `title`, `subtitle`, `heading1`, `heading2`, `heading3`, `body`, `footnote`
+
+Or set a word count to truncate the text to: `truncate: 20`, which will also add a title attribute with the full model text.
 
 ```js
 children: [

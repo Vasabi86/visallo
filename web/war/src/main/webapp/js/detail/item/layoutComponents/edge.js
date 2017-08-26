@@ -40,10 +40,10 @@ define([
             identifier: 'org.visallo.layout.header.text',
             className: 'edge-heading',
             children: [
-                { ref: 'org.visallo.layout.text', style: 'title', className: 'vertex-out', model: outVertexDisplay },
+                { ref: 'org.visallo.layout.text', style: 'title', className: 'vertex-out', model: outVertexDisplay, truncate: 12 },
                 { ref: 'org.visallo.layout.text', style: 'subtitle', model: outVertexConceptDisplay },
                 { ref: 'org.visallo.layout.text', className: 'edge-label', model: edgeLabelDisplay },
-                { ref: 'org.visallo.layout.text', style: 'title', className: 'vertex-in', model: inVertexDisplay },
+                { ref: 'org.visallo.layout.text', style: 'title', className: 'vertex-in', model: inVertexDisplay, truncate: 12 },
                 { ref: 'org.visallo.layout.text', style: 'subtitle', model: inVertexConceptDisplay }
             ]
         }

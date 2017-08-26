@@ -123,7 +123,6 @@ public class ResolveDetectedObject implements ParameterizedHandler {
 
         ElementMutation<Edge> edgeMutation = graph.prepareEdge(artifactVertex, resolvedVertex, artifactContainsImageOfEntityIri, visalloVisibility.getVisibility());
 
-        VisalloProperties.CONCEPT_TYPE.setProperty(edgeMutation, OntologyRepository.TYPE_RELATIONSHIP, defaultVisibility);
         VisalloProperties.VISIBILITY_JSON.setProperty(edgeMutation, visibilityJson, defaultVisibility);
         VisalloProperties.MODIFIED_DATE.setProperty(edgeMutation, modifiedDate, defaultVisibility);
         VisalloProperties.MODIFIED_BY.setProperty(edgeMutation, user.getUserId(), defaultVisibility);

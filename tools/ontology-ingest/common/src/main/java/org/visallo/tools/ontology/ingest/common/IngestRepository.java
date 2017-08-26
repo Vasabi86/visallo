@@ -132,6 +132,9 @@ public class IngestRepository {
             ElementBuilder elementBuilder,
             EntityBuilder entityBuilder
     ) {
+        VisalloProperties.MODIFIED_BY.setProperty(elementBuilder, ingestOptions.getIngestUser().getUserId(), visibilityTranslator.getDefaultVisibility());
+        VisalloProperties.MODIFIED_DATE.setProperty(elementBuilder, new Date(), visibilityTranslator.getDefaultVisibility());
+
         for (PropertyAddition<?> propertyAddition : entityBuilder.getPropertyAdditions()) {
             if (propertyAddition.getValue() != null) {
                 elementBuilder.addPropertyValue(

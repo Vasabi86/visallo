@@ -87,7 +87,7 @@
             'tpl': '../libs/@visallo/requirejs-ejs-plugin/rejs',
             'underscore': '../libs/underscore/underscore-min',
             'underscore.inflection': '../libs/underscore.inflection/lib/underscore.inflection',
-            'updeep': '../libs/updeep/dist/umd/updeep-standalone.min',
+            'updeep': '../libs/@visallo/updeep/dist/umd/updeep-standalone.min',
             'videojs': '../libs/video.js/dist/video.min'
         },
         shim: {

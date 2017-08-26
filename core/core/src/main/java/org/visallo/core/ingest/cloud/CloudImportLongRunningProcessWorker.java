@@ -125,6 +125,7 @@ public class CloudImportLongRunningProcessWorker extends LongRunningProcessWorke
                     if (downloadFile(id, inputStream, file, cumulativeSize, allItemsSize, noSizeProgress)) {
                         Vertex vertex = fileImport.importFile(
                                 file,
+                                file.getName(),
                                 queueDefaults,
                                 conceptId,
                                 properties,

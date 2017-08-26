@@ -55,13 +55,11 @@ define([
                 saveInProgress: true
             });
 
-            const newAuthorizations = [...this.state.authorizations, authorization];
-
             this.dataRequest('com-visallo-userAdminAuthorization', 'userAuthAdd', this.props.user.userName, authorization)
-                .then(() => {
+                .then((user) => {
                     this.setState({
                         addAuthorizationValue: '',
-                        authorizations: newAuthorizations,
+                        authorizations: user.authorizations,
                         saveInProgress: false,
                         error: null
                     });
@@ -76,18 +74,16 @@ define([
                 saveInProgress: true
             });
 
-            const newAuthorizations = this.state.authorizations.filter((a)=>a !== authorization);
-
             this.dataRequest('com-visallo-userAdminAuthorization', 'userAuthRemove', this.props.user.userName, authorization)
-                .then(() => {
+                .then((user) => {
                     this.setState({
-                        authorizations: newAuthorizations,
+                        authorizations: user.authorizations,
                         saveInProgress: false,
                         error: null
                     });
                 })
                 .catch((e) => {
-                    this.setState({error: e});
+                    this.setState({error: e, saveInProgress: false });
                 });
         },
 

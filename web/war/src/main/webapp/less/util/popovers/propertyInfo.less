@@ -65,7 +65,16 @@
       padding: 0.25em 0.5em;
       
       .selection {
-        .justification-selection;
+        display: block;
+        max-height: 6em;
+        overflow-y: auto;
+      }
+
+      .sourceInfoTitle {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
     }
 

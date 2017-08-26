@@ -163,7 +163,15 @@ public class VertexiumWorkspaceRepository extends WorkspaceRepository {
             ).forEach(productId -> deleteProduct(workspaceVertex.getId(), productId, user));
 
             getGraph().softDeleteVertex(workspaceVertex, authorizations);
+
+            List<WorkspaceUser> usersWithAccess = findUsersWithAccess(workspace.getWorkspaceId(), user);
+            usersWithAccess.forEach(userWithAccess -> {
+                if (workspace.getWorkspaceId().equals(userRepository.getCurrentWorkspaceId(userWithAccess.getUserId()))) {
+                    userRepository.setCurrentWorkspace(userWithAccess.getUserId(), null);
+                }
+            });
             getGraph().flush();
+            clearCache();
 
             graphAuthorizationRepository.removeAuthorizationFromGraph(workspace.getWorkspaceId());
         });

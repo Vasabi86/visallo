@@ -100,6 +100,7 @@ public abstract class UserPropertyAuthorizationRepositoryBase extends Authorizat
     }
 
     protected void addAuthorization(User user, String auth, User authUser) {
+        auth = auth.trim();
         Set<String> auths = getAuthorizations(user);
         if (!auths.contains(auth)) {
             LOGGER.info(

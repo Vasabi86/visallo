@@ -24,7 +24,7 @@ import javax.servlet.ServletContext;
 import java.io.InputStream;
 
 @Name("Structured File")
-@Description("Supports importing structured data from CSV and Excel")
+@Description("Supports importing structured data")
 public class StructuredIngestWebAppPlugin implements WebAppPlugin {
     private final OntologyRepository ontologyRepository;
     private final UserRepository userRepository;

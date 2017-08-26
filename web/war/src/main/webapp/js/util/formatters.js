@@ -565,7 +565,7 @@ define([
             },
 
             /**
-             * Truncate the string to given number of works and adds an
+             * Truncate the string to given number of words and adds an
              * ellipsis.
              *
              * @param {string} str The input string

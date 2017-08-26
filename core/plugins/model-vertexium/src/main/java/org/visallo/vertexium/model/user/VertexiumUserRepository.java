@@ -265,12 +265,16 @@ public class VertexiumUserRepository extends UserRepository {
         User user = findById(userId);
         checkNotNull(user, "Could not find user: " + userId);
         Vertex userVertex = findByIdUserVertex(user.getUserId());
-        UserVisalloProperties.CURRENT_WORKSPACE.setProperty(
-                userVertex,
-                workspaceId,
-                VISIBILITY.getVisibility(),
-                authorizations
-        );
+        if (workspaceId == null) {
+            UserVisalloProperties.CURRENT_WORKSPACE.removeProperty(userVertex, authorizations);
+        } else {
+            UserVisalloProperties.CURRENT_WORKSPACE.setProperty(
+                    userVertex,
+                    workspaceId,
+                    VISIBILITY.getVisibility(),
+                    authorizations
+            );
+        }
         graph.flush();
         return user;
     }

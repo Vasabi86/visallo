@@ -118,10 +118,11 @@ define([
             const getElements = ({ vertices, edges }) => {
                 const check = (elementsState) => {
                     const ret = {
-                        vertices: _.compact(Object.keys(vertices).map(({ id }) => elementsState.vertices[id])),
-                        edges: _.compact(Object.keys(edges).map(({ edgeId }) => elementsState.edges[edgeId]))
+                        vertices: _.compact(Object.keys(vertices).map(id => elementsState.vertices[id])),
+                        edges: _.compact(Object.keys(edges).map(id => elementsState.edges[id]))
                     }
-                    if (ret.vertices.length === vertices.length && ret.edges.length === edges.length) {
+                    if (ret.vertices.length === Object.keys(vertices).length
+                        && ret.edges.length === Object.keys(edges).length) {
                         return ret;
                     }
                 }

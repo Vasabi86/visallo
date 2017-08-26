@@ -12,6 +12,7 @@ public class InMemoryGraphAuthorizationRepository implements GraphAuthorizationR
     @Override
     public void addAuthorizationToGraph(String... auths) {
         for (String auth : auths) {
+            auth = auth.trim();
             LOGGER.info("Adding authorization to graph user %s", auth);
             authorizations.add(auth);
         }

@@ -8,7 +8,6 @@ import org.vertexium.mutation.ElementMutation;
 import org.vertexium.mutation.ExistingElementMutation;
 import org.visallo.core.exception.VisalloException;
 import org.visallo.core.model.graph.GraphRepository;
-import org.visallo.core.model.ontology.OntologyRepository;
 import org.visallo.core.model.properties.VisalloProperties;
 import org.visallo.core.model.workQueue.Priority;
 import org.visallo.core.model.workQueue.WorkQueueRepository;
@@ -206,7 +205,8 @@ public class RdfTripleImportHelper {
         ctx = triple.updateImportContext(ctx, this, authorizations);
 
         if (triple instanceof ConceptTypeVisalloRdfTriple) {
-            setConceptType(ctx, sourceFileName, (ConceptTypeVisalloRdfTriple) triple, user);
+            VisalloProperties.CONCEPT_TYPE.setProperty(ctx.getElementMutation(), ((ConceptTypeVisalloRdfTriple) triple).getConceptType(), visibilityTranslator.getDefaultVisibility());
+            updateBuiltInProperties(ctx, sourceFileName, ((ConceptTypeVisalloRdfTriple) triple).getElementVisibilitySource(), user);
             return ctx;
         }
 
@@ -216,7 +216,7 @@ public class RdfTripleImportHelper {
         }
 
         if (triple instanceof AddEdgeVisalloRdfTriple) {
-            setEdgeType(ctx, sourceFileName, (AddEdgeVisalloRdfTriple) triple, user);
+            updateBuiltInProperties(ctx, sourceFileName, ((AddEdgeVisalloRdfTriple) triple).getEdgeVisibilitySource(), user);
             return ctx;
         }
 
@@ -267,46 +267,23 @@ public class RdfTripleImportHelper {
         }
     }
 
-    private void setConceptType(
-            ImportContext ctx,
-            String sourceFileName,
-            ConceptTypeVisalloRdfTriple triple,
-            User user
-    ) {
-        Date now = new Date();
+    private void updateBuiltInProperties(ImportContext ctx, String sourceFileName, String visibilitySource, User user) {
+        ElementMutation elementMutation = ctx.getElementMutation();
         Visibility defaultVisibility = visibilityTranslator.getDefaultVisibility();
-
-        Visibility elementVisibility = getVisibility(triple.getElementVisibilitySource());
-        ElementMutation m = ctx.getElementMutation();
-        VisalloProperties.CONCEPT_TYPE.setProperty(m, triple.getConceptType(), defaultVisibility);
-        if (!isLiteralVisibilityString(triple.getElementVisibilitySource())) {
-            VisibilityJson visibilityJson = new VisibilityJson(triple.getElementVisibilitySource());
-            VisalloProperties.VISIBILITY_JSON.setProperty(m, visibilityJson, defaultVisibility);
-        }
-        VisalloProperties.MODIFIED_BY.setProperty(m, user.getUserId(), defaultVisibility);
-        VisalloProperties.MODIFIED_DATE.setProperty(m, now, defaultVisibility);
-        VisalloProperties.SOURCE.addPropertyValue(m, MULTIVALUE_KEY, sourceFileName, elementVisibility);
-    }
-
-    private void setEdgeType(
-            ImportContext ctx,
-            String sourceFileName,
-            AddEdgeVisalloRdfTriple triple,
-            User user
-    ) {
         Date now = new Date();
-        Visibility defaultVisibility = visibilityTranslator.getDefaultVisibility();
-
-        Visibility elementVisibility = getVisibility(triple.getEdgeVisibilitySource());
-        ElementMutation m = ctx.getElementMutation();
-        VisalloProperties.CONCEPT_TYPE.setProperty(m, OntologyRepository.TYPE_RELATIONSHIP, defaultVisibility);
-        if (!isLiteralVisibilityString(triple.getEdgeVisibilitySource())) {
-            VisibilityJson visibilityJson = new VisibilityJson(triple.getEdgeVisibilitySource());
-            VisalloProperties.VISIBILITY_JSON.setProperty(m, visibilityJson, defaultVisibility);
+        Metadata metadata = new Metadata();
+        if (!isLiteralVisibilityString(visibilitySource)) {
+            VisibilityJson visibilityJson = new VisibilityJson(visibilitySource);
+            VisalloProperties.VISIBILITY_JSON.setProperty(elementMutation, visibilityJson, defaultVisibility);
         }
-        VisalloProperties.MODIFIED_BY.setProperty(m, user.getUserId(), defaultVisibility);
-        VisalloProperties.MODIFIED_DATE.setProperty(m, now, defaultVisibility);
-        VisalloProperties.SOURCE.addPropertyValue(m, MULTIVALUE_KEY, sourceFileName, elementVisibility);
+        VisalloProperties.MODIFIED_BY.setProperty(elementMutation, user.getUserId(), defaultVisibility);
+        VisalloProperties.MODIFIED_DATE.setProperty(elementMutation, now, defaultVisibility);
+
+        VisalloProperties.VISIBILITY_JSON_METADATA.setMetadata(metadata, new VisibilityJson(defaultVisibility.getVisibilityString()), defaultVisibility);
+        VisalloProperties.MODIFIED_DATE_METADATA.setMetadata(metadata, now, defaultVisibility);
+        VisalloProperties.MODIFIED_BY_METADATA.setMetadata(metadata, user.getUserId(), defaultVisibility);
+        VisalloProperties.CONFIDENCE_METADATA.setMetadata(metadata, GraphRepository.SET_PROPERTY_CONFIDENCE, defaultVisibility);
+        VisalloProperties.SOURCE.addPropertyValue(elementMutation, MULTIVALUE_KEY, sourceFileName, metadata, defaultVisibility);
     }
 
     Visibility getVisibility(String visibilityString) {

@@ -69,12 +69,15 @@ define([
             if (this.attr.sourceMetadata) {
                 this.dataRequest('vertex', 'store', { vertexIds: this.attr.sourceMetadata.vertexId })
                     .then(function(vertex) {
-                        var title = vertex && F.vertex.title(vertex);
-                        self.select('sourceInfoTitleSelector').text(
-                            title || i18n('popovers.property_info.title_unknown')
-                        );
+                        var title = vertex && F.vertex.title(vertex) || i18n('popovers.property_info.title_unknown');
+                        self.select('sourceInfoTitleSelector')
+                            .text(title)
+                            .attr('title', title);
+
                         self.trigger('positionDialog');
                     });
+            } else {
+                this.$node.css({ maxHeight: '6em', overflowY: 'auto'})
             }
         });
 

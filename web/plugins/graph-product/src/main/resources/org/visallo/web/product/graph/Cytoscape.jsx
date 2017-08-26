@@ -767,20 +767,39 @@ define([
         },
 
         drawPaths(newData) {
+            const { cy } = this.state;
             const { drawPaths } = this.props;
 
             if (drawPaths) {
-                const { paths, sourceId, targetId } = drawPaths;
+                const { paths, renderedPaths, sourceId, targetId, labels } = drawPaths;
+
+                if (cy.getElementById(sourceId).empty() ||
+                    cy.getElementById(targetId).empty()) {
+                    return;
+                }
+
                 const nodesById = _.indexBy(newData.elements.nodes, n => n.data.id);
                 const keyGen = (src, target) => [src, target].sort().join('');
-                const edgesById = _.groupBy(newData.elements.edges, e => keyGen(e.data.source, e.data.target));
-                paths.forEach((path, i) => {
-                    const vertexIds = path.filter(v => v !== sourceId && v !== targetId);
-                    const end = colorjs('#0088cc').shiftHue(i * (360 / paths.length)).toCSSHex();
+                const edgesById = _.groupBy(
+                    newData.elements.edges.filter(e => {
+                        const edgeLabels = e.data.edges.reduce((all, e) => {
+                            all.push(e.label);
+                            return all;
+                        }, []);
+                        return edgeLabels.some(label => labels.includes(label));
+                    }),
+                    e => keyGen(e.data.source, e.data.target)
+                );
+
+                renderedPaths.forEach((path, i) => {
+                    const nodeIds = path.filter(v => v !== sourceId && v !== targetId);
+                    const end = colorjs('#0088cc').shiftHue(i * (360 / renderedPaths.length)).toCSSHex();
                     const existingOrNewEdgeBetween = (node1, node2, count) => {
                         var edges = edgesById[keyGen(node1, node2)];
                         if (edges) {
-                            edges.forEach(e => {
+                            edges.filter(e => e.data.edges.some(
+                                e => paths[i].includes(e.inVertexId) && paths[i].includes(e.outVertexId)
+                            )).forEach(e => {
                                 e.classes = (e.classes ? e.classes + ' ' : '') + 'path-edge';
                                 e.data.pathColor = end
                             });
@@ -805,10 +824,10 @@ define([
                     var count = 0;
                     var lastNode = sourceId;
 
-                    vertexIds.forEach(vertexId => {
-                        if (vertexId in nodesById) {
-                            existingOrNewEdgeBetween(lastNode, vertexId, count);
-                            lastNode = vertexId;
+                    nodeIds.forEach(nodeId => {
+                        if (nodeId in nodesById) {
+                            existingOrNewEdgeBetween(lastNode, nodeId, count);
+                            lastNode = nodeId;
                             count = 0;
                         } else count++;
                     });

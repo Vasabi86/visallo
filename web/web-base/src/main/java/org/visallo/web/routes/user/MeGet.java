@@ -1,11 +1,9 @@
 package org.visallo.web.routes.user;
 
-import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
 import com.v5analytics.webster.ParameterizedHandler;
 import com.v5analytics.webster.annotations.Handle;
 import com.v5analytics.webster.handlers.CSRFHandler;
-import org.vertexium.util.IterableUtils;
 import org.visallo.core.model.user.UserRepository;
 import org.visallo.core.model.workspace.Workspace;
 import org.visallo.core.model.workspace.WorkspaceRepository;
@@ -15,7 +13,6 @@ import org.visallo.core.util.VisalloLoggerFactory;
 import org.visallo.web.clientapi.model.ClientApiUser;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +71,7 @@ public class MeGet implements ParameterizedHandler {
                 workspace = workspaceRepository.add(user);
             }
 
+            userRepository.setCurrentWorkspace(user.getUserId(), workspace.getWorkspaceId());
             userMe.setCurrentWorkspaceId(workspace.getWorkspaceId());
             userMe.setCurrentWorkspaceName(workspace.getDisplayTitle());
         }

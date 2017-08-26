@@ -1,5 +1,6 @@
 package org.visallo.core.model.graph;
 
+import com.google.common.base.Strings;
 import com.google.inject.Inject;
 import org.vertexium.*;
 import org.vertexium.mutation.ExistingElementMutation;
@@ -416,7 +417,7 @@ public class GraphRepository {
                     visalloVisibility.getVisibility()
             );
         }
-        updateElementMetadataProperties(edgeBuilder, OntologyRepository.TYPE_RELATIONSHIP, visibilityJson, user);
+        updateElementMetadataProperties(edgeBuilder, null, visibilityJson, user);
 
         boolean justificationAdded = addJustification(
                 edgeBuilder,
@@ -464,11 +465,13 @@ public class GraphRepository {
         Visibility defaultVisibility = visibilityTranslator.getDefaultVisibility();
         Date now = new Date();
 
-        VisalloProperties.CONCEPT_TYPE.setProperty(
-                elementBuilder,
-                conceptType,
-                defaultVisibility
-        );
+        if (!Strings.isNullOrEmpty(conceptType)) {
+            VisalloProperties.CONCEPT_TYPE.setProperty(
+                    elementBuilder,
+                    conceptType,
+                    defaultVisibility
+            );
+        }
         VisalloProperties.VISIBILITY_JSON.setProperty(
                 elementBuilder,
                 visibilityJson,

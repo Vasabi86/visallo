@@ -68,7 +68,7 @@ define([
                     }
                 }
             }
-            const nextState = reducer({ w1: {}}, {
+            const nextState = reducer(state, {
                 type: 'ONTOLOGY_REMOVE_IRIS',
                 payload: {
                     workspaceId,

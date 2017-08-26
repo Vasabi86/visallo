@@ -95,6 +95,7 @@ public class ResolveTermEntity implements ParameterizedHandler {
         Metadata metadata = new Metadata();
         Visibility defaultVisibility = visibilityTranslator.getDefaultVisibility();
         VisalloProperties.VISIBILITY_JSON_METADATA.setMetadata(metadata, visibilityJson, defaultVisibility);
+        VisalloProperties.MODIFIED_BY_METADATA.setMetadata(metadata, user.getUserId(), defaultVisibility);
 
         Vertex vertex;
         Edge edge;

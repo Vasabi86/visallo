@@ -14,6 +14,7 @@
     "test": "node ./node_modules/jest/bin/jest.js"
   },
   "devDependencies": {
+    "@visallo/updeep": "^1.0.1",
     "babel-core": "^6.21.0",
     "babel-jest": "^18.0.0",
     "babel-loader": "^7.1.1",
@@ -36,7 +37,6 @@
     "redux-mock-store": "^1.2.2",
     "redux-thunk": "^2.2.0",
     "underscore": "1.8.3",
-    "updeep": "^1.0.0",
     "webpack": "^3.5.2"
   },
   "jest": {
@@ -62,7 +62,8 @@
       "util/formatters": "<rootDir>/__mocks__/util/formatters.js",
       "colorjs": "<rootDir>/node_modules/color-js/color.js",
       "fast-json-patch": "<rootDir>/node_modules/fast-json-patch/dist/json-patch-duplex.min.js",
-      "underscore": "<rootDir>/node_modules/underscore/underscore-min.js"
+      "underscore": "<rootDir>/node_modules/underscore/underscore-min.js",
+      "updeep": "@visallo/updeep"
     }
   }
 }

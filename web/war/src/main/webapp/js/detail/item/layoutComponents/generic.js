@@ -1,4 +1,4 @@
-define([], function() {
+define(['util/vertex/formatters'], function(F) {
     'use strict';
 
     return [
@@ -21,7 +21,14 @@ define([], function() {
                     }
                     el.classList.add(config.style)
                 }
-                el.textContent = String(model);
+
+                if (config.truncate) {
+                    const text = String(model);
+                    el.textContent = F.string.truncate(text, config.truncate);
+                    el.title = text;
+                } else {
+                    el.textContent = String(model);
+                }
             }
         },
         {

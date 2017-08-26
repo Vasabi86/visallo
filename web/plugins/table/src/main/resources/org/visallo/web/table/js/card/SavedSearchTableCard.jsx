@@ -143,7 +143,7 @@ define([
                         return true;
                     } else {
                         const activeTab = _.findKey(tableView, (tab) => tab.active || false);
-                        return !activeTab;
+                        return !tableData[searchId][activeTab];
                     }
                 }
             }
@@ -214,7 +214,7 @@ define([
                         let activeTab = _.findKey(tableView, (tab) => tab.active || false);
 
                         if (!activeTab) {
-                            activeTab = Object.keys(tableView)[2];
+                            activeTab = Object.keys(tabs)[0];
                             tableView[activeTab].active = true;
                         }
 

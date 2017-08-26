@@ -461,6 +461,42 @@ public class TermMentionRepository {
             Visibility visibility,
             Authorizations authorizations
     ) {
+        addSourceInfoToVertex(
+            vertex,
+            forElementId,
+            forType,
+            propertyKey,
+            propertyName,
+            propertyVisibility,
+            null,
+            snippet,
+            textPropertyKey,
+            textPropertyName,
+            startOffset,
+            endOffset,
+            outVertex,
+            visibility,
+            authorizations
+        );
+    }
+
+    public void addSourceInfoToVertex(
+            Vertex vertex,
+            String forElementId,
+            TermMentionFor forType,
+            String propertyKey,
+            String propertyName,
+            Visibility propertyVisibility,
+            String edgeId,
+            String snippet,
+            String textPropertyKey,
+            String textPropertyName,
+            long startOffset,
+            long endOffset,
+            Vertex outVertex,
+            Visibility visibility,
+            Authorizations authorizations
+    ) {
         visibility = VisalloVisibility.and(visibility, VISIBILITY_STRING);
         String termMentionVertexId = vertex.getId() + "hasSource" + outVertex.getId();
         if (propertyKey != null) {
@@ -471,6 +507,9 @@ public class TermMentionRepository {
         }
         if (propertyVisibility != null) {
             termMentionVertexId += ":" + propertyVisibility;
+        }
+        if (edgeId != null) {
+            termMentionVertexId += ":" + edgeId;
         }
         VertexBuilder m = graph.prepareVertex(termMentionVertexId, visibility);
         VisalloProperties.TERM_MENTION_FOR_ELEMENT_ID.setProperty(m, forElementId, visibility);
@@ -545,6 +584,7 @@ public class TermMentionRepository {
                 propertyKey,
                 propertyName,
                 propertyVisibility,
+                edge.getId(),
                 snippet,
                 textPropertyKey,
                 textPropertyName,
@@ -561,6 +601,7 @@ public class TermMentionRepository {
                 propertyKey,
                 propertyName,
                 propertyVisibility,
+                edge.getId(),
                 snippet,
                 textPropertyKey,
                 textPropertyName,
@@ -652,7 +693,9 @@ public class TermMentionRepository {
         Authorizations authorizationsWithTermMentions = getAuthorizations(authorizations);
         Vertex vertex = graph.getVertex(vertexId, authorizationsWithTermMentions);
 
-        if (vertex == null) { return null; }
+        if (vertex == null) {
+            return null;
+        }
 
         Iterable<Vertex> termMentions = vertex.getVertices(
                 Direction.IN,

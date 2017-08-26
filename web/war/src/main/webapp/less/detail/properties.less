@@ -33,19 +33,25 @@
       height: 16px;
       .transition(~"transform cubic-bezier(0, 0, 0, 1.73) 0.2s");
     }
-    &:hover button.info {
-      visibility: visible;
-      .scale(0.8);
-      &:hover {
-        margin: 0;
-        padding: 0;
-        width: 16px;
-        height: 16px;
-        top: 2px;
-        .scale(1.0);
+    &:hover {
+      button.info {
+        visibility: visible;
+        .scale(0.8);
+        &:hover {
+          margin: 0;
+          padding: 0;
+          width: 16px;
+          height: 16px;
+          top: 2px;
+          .scale(1.0);
+        }
+        &:active {
+          top: 3px;
+        }
       }
-      &:active {
-        top: 3px;
+
+      .value-expand {
+        display: inline;
       }
     }
   }
@@ -114,14 +120,24 @@
     word-break: break-all;
     .value {
       flex: 1 1 auto;
+      .value-expand {
+        display: none;
+        padding-left: 0.5em;
+        color: @blue-color;
+        font-size: 10px;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+
+        &:before {
+          color: @blue-color;
+          position: static;
+        }
+      }
     }
     .visibility {
       flex: 0 1 auto;
       word-break: normal;
-    }
-    .selection {
-      /* TODO: check this*/
-      .justification-selection;
     }
     .map-coordinates {
       /*TODO: check this*/

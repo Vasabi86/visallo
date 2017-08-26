@@ -1,6 +1,8 @@
 package org.visallo.web.ingest.cloud.s3;
 
 import com.v5analytics.webster.Handler;
+import org.visallo.core.model.Description;
+import org.visallo.core.model.Name;
 import org.visallo.web.VisalloCsrfHandler;
 import org.visallo.web.WebApp;
 import org.visallo.web.WebAppPlugin;
@@ -9,6 +11,8 @@ import org.visallo.web.privilegeFilters.ReadPrivilegeFilter;
 
 import javax.servlet.ServletContext;
 
+@Name("Amazon S3 Cloud Ingest")
+@Description("Adds support for importing structured data from Amazon S3 buckets")
 public class AmazonS3WebAppPlugin implements WebAppPlugin {
 
     @Override

@@ -219,6 +219,7 @@ public abstract class VisalloProperty<TRaw, TGraph> extends VisalloPropertyBase<
             Long timestamp,
             Visibility visibility
     ) {
+        checkNotNull(metadata, "metadata is required");
         updateProperty(changedPropertiesOut, element, m, propertyKey, newValue, metadata.createMetadata(), timestamp, visibility);
     }
 
