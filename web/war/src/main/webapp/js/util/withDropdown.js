@@ -11,6 +11,7 @@ define(['util/withFormFieldErrors'], function(withFormFieldErrors) {
         });
 
         this.open = function() {
+            if (this.attr.disableDropdownFeatures) return;
             var self = this,
                 node = this.$node,
                 scrollParent = node.scrollParent(),

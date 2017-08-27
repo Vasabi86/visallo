@@ -547,7 +547,6 @@ define([
                     }
                 })
                 const dt = e.dataTransfer;
-                dt.effectAllowed = 'all';
                 dnd.setDataTransferWithElements(dt, { elements })
             }, false)
         };

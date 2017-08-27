@@ -1,13 +1,23 @@
 define([
     'create-react-class',
     'prop-types',
+    'classnames',
+    'components/Alert',
     'components/ElementSelector',
     'components/ontology/ConceptSelector',
-    //'components/Attacher',
     'components/justification/JustificationEditor',
     'components/visibility/VisibilityEditor',
     'util/vertex/formatters'
-], function(createReactClass, PropTypes, ElementSelector, ConceptSelector, JustificationEditor, VisibilityEditor, F) {
+], function(
+    createReactClass,
+    PropTypes,
+    classNames,
+    Alert,
+    ElementSelector,
+    ConceptSelector,
+    JustificationEditor,
+    VisibilityEditor,
+    F) {
 
     const Resolve = createReactClass({
         propTypes: {
@@ -19,6 +29,8 @@ define([
             sign: PropTypes.string.isRequired,
             onCancel: PropTypes.func.isRequired,
             onResolve: PropTypes.func.isRequired,
+            error: PropTypes.instanceOf(Error),
+            loading: PropTypes.bool,
             resolvedFromTermMention: PropTypes.string,
             conceptType: PropTypes.string
         },
@@ -29,12 +41,14 @@ define([
             }
         },
         render() {
-            const { onCancel, sign, conceptType, ...rest } = this.props;
+            const { onCancel, sign, conceptType, error, loading = false, ...rest } = this.props;
             const { resolvedVertexId, newElementText, conceptId, justification = {}, visibility } = this.state;
             const { valid: justificationValid, value: justificationValues } = justification
 
             return (
                 <div className="form">
+                    { error ? (<Alert error={error} />) : null }
+
                     <h1>{ resolvedVertexId ? 'Resolve to Existing Entity' :
                         newElementText ? 'Resolve to New Entity' : 'Search for Entities' }</h1>
                     <ElementSelector
@@ -68,8 +82,11 @@ define([
                         </div>
                     ) : null }
                     <div className="buttons">
-                        <button onClick={onCancel} className="btn btn-link">Cancel</button>
-                        <button disabled={!this.isValid()} onClick={this.onResolve} className="btn-primary btn">Resolve</button>
+                        <button onClick={onCancel} className="btn btn-link btn-small">Cancel</button>
+                        <button
+                            disabled={loading || !this.isValid()}
+                            onClick={this.onResolve}
+                            className={classNames('btn-success btn btn-small', {loading})}>Resolve</button>
                     </div>
                 </div>
             )

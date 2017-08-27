@@ -16,6 +16,7 @@ import org.visallo.core.model.graph.GraphUpdateContext;
 import org.visallo.core.model.ontology.Concept;
 import org.visallo.core.model.ontology.OntologyRepository;
 import org.visallo.core.model.properties.VisalloProperties;
+import org.visallo.core.model.properties.types.PropertyMetadata;
 import org.visallo.core.model.termMention.TermMentionBuilder;
 import org.visallo.core.model.workQueue.Priority;
 import org.visallo.core.model.workQueue.WorkQueueRepository;
@@ -92,18 +93,15 @@ public class ResolveTermEntity implements ParameterizedHandler {
 
         final Vertex artifactVertex = graph.getVertex(artifactId, authorizations);
         VisalloVisibility visalloVisibility = visibilityTranslator.toVisibility(visibilityJson);
-        Metadata metadata = new Metadata();
-        Visibility defaultVisibility = visibilityTranslator.getDefaultVisibility();
-        VisalloProperties.VISIBILITY_JSON_METADATA.setMetadata(metadata, visibilityJson, defaultVisibility);
-        VisalloProperties.MODIFIED_BY_METADATA.setMetadata(metadata, user.getUserId(), defaultVisibility);
+        Visibility visibility = visalloVisibility.getVisibility();
+        Date modifiedDate = new Date();
+
+        PropertyMetadata propertyMetadata = new PropertyMetadata(modifiedDate, user, visibilityJson, visibility);
 
         Vertex vertex;
         Edge edge;
 
         try (GraphUpdateContext ctx = graphRepository.beginGraphUpdate(Priority.NORMAL, user, authorizations)) {
-
-            Date modifiedDate = new Date();
-
             if (resolvedVertexId != null) {
                 vertex = graph.getVertex(id, authorizations);
                 conceptId = VisalloProperties.CONCEPT_TYPE.getPropertyValue(vertex);
@@ -113,25 +111,28 @@ public class ResolveTermEntity implements ParameterizedHandler {
                 }
 
 
-                VertexBuilder builder = graph.prepareVertex(id, visalloVisibility.getVisibility());
+                final String conceptType = conceptId;
+                vertex = ctx.getOrCreateVertexAndUpdate(id, visibility, elemCtx -> {
+                    elemCtx.setConceptType(conceptType);
+                    elemCtx.updateBuiltInProperties(propertyMetadata);
 
-
-                vertex = ctx.update(builder, modifiedDate, visibilityJson, conceptId, elementCtx -> {
-                    VisalloProperties.TITLE.updateProperty(elementCtx, MULTI_VALUE_KEY, title, metadata, visalloVisibility.getVisibility());
+                    VisalloProperties.TITLE.updateProperty(elemCtx, MULTI_VALUE_KEY, title, propertyMetadata);
 
                     if (justificationText != null && sourceInfoString == null) {
                         PropertyJustificationMetadata propertyJustificationMetadata = new PropertyJustificationMetadata(justificationText);
-                        VisalloProperties.JUSTIFICATION.updateProperty(elementCtx, propertyJustificationMetadata, visalloVisibility.getVisibility());
+                        VisalloProperties.JUSTIFICATION.updateProperty(elemCtx, propertyJustificationMetadata, propertyMetadata);
                     }
                 }).get();
-
-                workspaceRepository.updateEntityOnWorkspace(workspace, vertex.getId(), user);
             }
 
-            EdgeBuilder edgeBuilder = graph.prepareEdge(artifactVertex, vertex, artifactHasEntityIri, visalloVisibility.getVisibility());
-            edge = ctx.update(edgeBuilder, modifiedDate, visibilityJson, edgeCtx -> {}).get();
+            edge = ctx.getOrCreateEdgeAndUpdate(null, artifactVertex.getId(), vertex.getId(), artifactHasEntityIri, visibility, edgeCtx -> {
+                edgeCtx.updateBuiltInProperties(propertyMetadata);
+            }).get();
         }
 
+        if (resolvedVertexId == null) {
+            workspaceRepository.updateEntityOnWorkspace(workspace, vertex.getId(), user);
+        }
 
         ClientApiSourceInfo sourceInfo = ClientApiSourceInfo.fromString(sourceInfoString);
         new TermMentionBuilder()

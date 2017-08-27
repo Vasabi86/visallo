@@ -118,7 +118,6 @@ define([
                     const elements = { vertexIds: [id], edgeIds: [] };
                     const dt = e.originalEvent.dataTransfer;
 
-                    dt.effectAllowed = 'all';
                     if (model.id === id) {
                         const url = F.vertexUrl.url([model], visalloData.currentWorkspaceId);
                         dnd.setDataTransferWithElements(dt, { elements: [model] })

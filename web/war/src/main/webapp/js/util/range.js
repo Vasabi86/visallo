@@ -7,7 +7,7 @@ define([
     'use strict';
 
     if (!rangy.initialized) {
-        console.warn('Rangy should have been initialized by ClipboardManager...')
+        console.warn('Rangy should have been initialized by ClipboardManager…')
         rangy.init();
     }
 
@@ -89,6 +89,15 @@ define([
             });
         },
 
+        getNodesWithinRange: function(range) {
+            var r = rangy.createRange();
+
+            r.setStart(range.startContainer, range.startOffset);
+            r.setEnd(range.endContainer, range.endOffset);
+
+            return r.getNodes()
+        },
+
         createSnippetFromNode: function(node, numberWords, limitToContainer) {
             var range = document.createRange();
 
@@ -119,10 +128,10 @@ define([
                     }
 
                     if (prependEllipsis) {
-                        return '...' + str;
+                        return '…' + str;
                     }
 
-                    return str + '...';
+                    return str + '…';
                 },
                 contextHighlight = transform(output.before, true) +
                     '<span class="selection">' + text + '</span>' +

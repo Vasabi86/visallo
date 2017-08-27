@@ -40,7 +40,9 @@ define([
             vertexContainerSelector: '.vertex-select-container',
             visibilitySelector: '.visibility',
             justificationSelector: '.justification',
-            visibilityInputSelector: '.visibility input'
+            visibilityInputSelector: '.visibility input',
+            allowDeleteProperty: true,
+            allowEditProperty: true
         });
 
         this.before('initialize', function(n, c) {
@@ -59,7 +61,7 @@ define([
                 deleteButtonSelector: this.onDelete,
                 previousValuesSelector: this.onPreviousValuesButtons
             });
-            this.on('keyup', {
+            this.on('keyup keydown', {
                 configurationFieldSelector: this.onKeyup,
                 justificationSelector: this.onKeyup,
                 visibilityInputSelector: this.onKeyup
@@ -96,9 +98,11 @@ define([
                         .value()
                 });
             } else if (!vertex) {
-                this.on('vertexSelected', this.onVertexSelected);
+                this.on('elementSelected', this.onElementSelected);
                 VertexSelector.attachTo(this.select('vertexContainerSelector'), {
-                    value: ''
+                    value: '',
+                    focus: true,
+                    placeholder: i18n('vertex.field.placeholder')
                 });
                 this.manualOpen();
             } else {
@@ -115,7 +119,7 @@ define([
                 filter.conceptId = conceptType;
             }
 
-            const propertyNode = this.select('propertyListSelector');
+            const propertyNode = this.select('propertyListSelector').show();
             propertyNode.one('rendered', () => {
                 this.on('opened', () => {
                     propertyNode.find('input').focus()
@@ -134,17 +138,20 @@ define([
             });
         };
 
-        this.onVertexSelected = function(event, data) {
+        this.onElementSelected = function(event, data) {
             event.stopPropagation();
 
-            if (data.item && data.item.properties) {
-                this.attr.data = data.item;
+            if (data.element) {
+                this.attr.data = data.element;
                 this.setupPropertySelectionField();
+            } else {
+                this.select('propertyListSelector').hide();
             }
         };
 
         this.after('teardown', function() {
             this.select('visibilitySelector').teardownAllComponents();
+            this.select('vertexContainerSelector').teardownComponent(VertexSelector);
 
             if (this.$node.closest('.buttons').length === 0) {
                 this.$node.closest('tr').remove();
@@ -290,7 +297,7 @@ define([
                 previousValuesUniquedByKey = null;
             }
 
-            if (data.fromPreviousValuePrompt !== true) {
+            if (data.fromPreviousValuePrompt !== true && this.attr.allowEditProperty) {
                 if (previousValuesUniquedByKeyUpdateable && previousValuesUniquedByKeyUpdateable.length) {
                     this.previousValues = previousValuesUniquedByKeyUpdateable;
                     this.previousValuesPropertyName = propertyName;
@@ -319,7 +326,8 @@ define([
             var deleteButton = this.select('deleteButtonSelector')
                 .toggle(
                     !!isExistingProperty &&
-                    !isEditingVisibility
+                    !isEditingVisibility &&
+                    this.attr.allowDeleteProperty
                 );
 
             var button = this.select('saveButtonSelector')
@@ -580,7 +588,13 @@ define([
         };
 
         this.onKeyup = function(evt) {
-            if (evt.which === $.ui.keyCode.ENTER) {
+            const valid = evt.which === $.ui.keyCode.ENTER &&
+                $(evt.target).is('.configuration *,.visibility *,.justification *');
+
+            if (evt.type === 'keydown') {
+                this._keydownValid = valid;
+            } else if (this._keydownValid && valid) {
+                this._keydownValid = false;
                 this.onSave();
             }
         };

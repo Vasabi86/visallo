@@ -11,6 +11,10 @@ define([
 
     function TextPopover() {
 
+        this.before('teardown', function() {
+            this.attacher.teardown();
+        })
+
         this.before('initialize', function(node, config) {
             config.hideDialog = true;
             config.template = '/detail/text/popover/popover.hbs';
@@ -22,11 +26,20 @@ define([
                     .path('detail/text/popover/TermContainer')
                     .params({ selection, terms, artifactId, propertyName, propertyKey })
                     .behavior({
+                        hoverTerm: (attacher, id) => {
+                            this.trigger('hoverTerm', { id });
+                        },
+                        comment: (attacher, sourceInfo) => {
+                            this.trigger('commentOnSelection', sourceInfo);
+                        },
+                        openFullscreen: (attacher, vertexId) => {
+                            this.trigger(document, 'openFullscreen', { vertexIds: [vertexId] });
+                        },
+                        reloadText: () => {
+                            this.trigger(document, 'textUpdated', { vertexId: artifactId });
+                        },
                         closeDialog: () => {
                             this.teardown();
-                        },
-                        positionDialog: () => {
-                            this.positionDialog();
                         }
                     });
 

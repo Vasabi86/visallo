@@ -166,6 +166,7 @@ define([
             });
             this.on('focusOnSnippet', this.onFocusOnSnippet);
             this.on('editProperty', this.onEditProperty);
+            this.on('hoverTerm', this.onHoverTerm);
             this.on('copy cut', {
                 textSelector: this.onCopyText
             });
@@ -583,7 +584,9 @@ define([
             }, 16);
         };
 
-        this.setHoverTarget = function($text, target) {
+        this.setHoverTarget = function($text, target, options = {}) {
+            const { hoverOnlyTarget = false } = options;
+
             if (target) {
                 clearTimeout(this.hoverLeaveTimeout);
             }
@@ -595,7 +598,7 @@ define([
                 }
                 if (ref) {
                     const refs = [ref];
-                    if (target) {
+                    if (target && hoverOnlyTarget !== true) {
                         let parent = target;
                         while (!parent.classList.contains('text')) {
                             const r = this.getElementRefId(parent);
@@ -638,7 +641,11 @@ define([
                     console.warn("Text contains a data-ref that doesn't exist in document", element);
                 }
             }
-            return info ? JSON.parse(info) : null;
+            let parsedInfo = info ? JSON.parse(info) : null;
+            if (parsedInfo) {
+                parsedInfo.refId = element.dataset.refId || ref;
+            }
+            return parsedInfo;
         }
 
         this.onTermClick = function(event) {
@@ -820,11 +827,32 @@ define([
                     mentionEnd,
                     snippet: rangeUtils.createSnippetFromRange(range, undefined, textContainer)
                 };
+                const nodesFound = rangeUtils.getNodesWithinRange(range);
+                let termList = [];
+                if (nodesFound) {
+                    const terms = {};
+                    nodesFound.forEach(node => {
+                        if (node.nodeType === 3) {
+                            node = node.parentNode;
+                        }
+                        const $node = $(node);
+                        if ($node.hasClass('text')) return;
+                        const self = this;
+                        $(node).parentsUntil('.text', 'span').andSelf().each(function() {
+                            const term = self.getElementInfoUsingRef(this)
+                            if (term) {
+                                terms[term.id] = term;
+                            }
+                        })
+                    })
+                    termList = Object.values(terms)
+                }
 
                 this.popover({
                     node: textContainer,
                     anchorTo,
                     selection,
+                    terms: termList,
                     propertyKey: $textSection.data('key'),
                     propertyName: $textSection.data('name'),
                     artifactId: self.model.id
@@ -912,6 +940,16 @@ define([
                 });
             })
         }
+
+        this.onHoverTerm = function(event, data) {
+            const $text = $(event.target).closest('.text');
+            let el;
+            if (data) {
+                el = $text.find('.' + data.id).get(0)
+            }
+
+            this.setHoverTarget($text, el, { hoverOnlyTarget: true });
+        };
 
         this.tearDownDropdowns = function() {
             this.$node.find('.underneath').teardownAllComponents();
@@ -1079,22 +1117,6 @@ define([
                             self.loadSelectorForConcept(concept);
                         }
                     }
-
-                    /*
-                    $this.attr('draggable', true)
-                        .off('dragstart dragend')
-                        .on('dragstart', function(event) {
-                            const dt = event.originalEvent.dataTransfer;
-                            const elements = { vertexIds: [info.resolvedToVertexId], edgeIds: [] };
-                            dt.effectAllowed = 'all';
-                            dnd.setDataTransferWithElements(dt, elements);
-                            $(this).closest('.text').addClass('drag-focus');
-                            currentlyDragging = event.target;
-                        })
-                        .on('dragend', function() {
-                            $(this).closest('.text').removeClass('drag-focus');
-                        });
-                        */
                 })
 
             if (Privileges.canEDIT) {
@@ -1164,18 +1186,6 @@ define([
             }
 
             this.loadRule(concept.color, '.highlight-underline .res.' + className, STYLE_STATES.NORMAL);
-            window._loadRule = (el, selector, state) => {
-                var info = this.getElementInfoUsingRef(el),
-                    type = info && info.conceptType,
-                    concept = type && this.concepts.byId[type],
-                    color = concept && concept.color || '#000000';
-
-                if (el.classList.contains('res')) {
-                    this.loadRule(color, selector, state);
-                } else {
-                    this.loadRule('#0088cc', selector, state);
-                }
-            };
         };
 
         this.loadRule = function(color, selector, state) {
@@ -1185,7 +1195,7 @@ define([
                         ...(_.object(_.map(STYLE_STATES, (v, k) => [k.toLowerCase(), v === state]))),
                         colors: {
                             normal: colorjs(color).setAlpha(1.0),
-                            hover: colorjs(color).setAlpha(0.1)
+                            background: colorjs(color).setAlpha(0.1)
                         }
                     });
                 };

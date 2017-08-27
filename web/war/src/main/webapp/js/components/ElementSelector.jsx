@@ -25,12 +25,19 @@ define([
             return { searchOptions: {} };
         },
         getInitialState() {
-            return { options: [], isLoading: true };
+            return { options: [], isLoading: false };
         },
         componentDidMount() {
             this.onInputChange = _.debounce(this.onInputChange, 250);
             const { value } = this.props;
-            this.searchForElements(value)
+            if (value) {
+                this.searchForElements(value)
+            }
+        },
+        componentWillUnmount() {
+            if (this.request) {
+                this.request.cancel();
+            }
         },
         render() {
             const { value: initialValue, creatable, ...rest } = this.props;
@@ -64,16 +71,19 @@ define([
 
             this.setState({ isLoading: true })
             return Promise.require('util/withDataRequest')
-                .then(({ dataRequest }) => dataRequest('vertex', 'search', {
-                    matchType: 'element',
-                    paging: {
-                        offset: 0,
-                        size: 25
-                    },
-                    query,
-                    ...searchOptions,
-                    disableResultCache: true
-                }))
+                .then(({ dataRequest }) => {
+                    this.request = dataRequest('vertex', 'search', {
+                        matchType: 'element',
+                        paging: {
+                            offset: 0,
+                            size: 25
+                        },
+                        query,
+                        ...searchOptions,
+                        disableResultCache: true
+                    });
+                    return this.request;
+                })
                 .then(({ elements }) => {
                     let options = elements;
 
@@ -110,6 +120,10 @@ define([
                     if (toSelect) {
                         this.onChange(toSelect);
                     }
+                })
+                .catch(error => {
+                    console.error(error);
+                    this.setState({ isLoading: false })
                 })
         },
         onInputChange(input) {

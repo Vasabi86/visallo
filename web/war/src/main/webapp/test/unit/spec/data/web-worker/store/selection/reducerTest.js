@@ -15,7 +15,7 @@ define(['/base/jsc/data/web-worker/store/selection/reducer'], function(reducer) 
         it('should add selection to empty', () => {
             var result = reducer(emptyState, {
                 type: 'SELECTION_ADD',
-                payload: { selection: { vertices: ['a'], edges: [] }} 
+                payload: { selection: { vertices: ['a'], edges: [] }}
             });
             result.should.deep.equal({
                 idsByType: { vertices: ['a'], edges: [], options: {} }
@@ -23,18 +23,26 @@ define(['/base/jsc/data/web-worker/store/selection/reducer'], function(reducer) 
 
             result = reducer(emptyState, {
                 type: 'SELECTION_ADD',
-                payload: { selection: { vertices: [], edges: ['b'] }} 
+                payload: { selection: { vertices: [], edges: ['b'] }}
             });
             result.should.deep.equal({
                 idsByType: { vertices: [], edges: ['b'], options: {} }
             })
+
+            result = reducer(emptyState, {
+                type: 'SELECTION_ADD',
+                payload: { selection: { vertices: ['a']}}
+            });
+            result.should.deep.equal({
+                idsByType: { vertices: ['a'], edges: [], options: {} }
+            })
         })
-        
+
         it('should add selection to existing', () => {
             const vertices = ['a'], edges = ['b']
             var result = reducer(genState({ vertices, edges }), {
                 type: 'SELECTION_ADD',
-                payload: { selection: { vertices: ['a2'], edges: ['b2', 'b3'] }} 
+                payload: { selection: { vertices: ['a2'], edges: ['b2', 'b3'] }}
             });
             result.should.deep.equal({
                 idsByType: { vertices: ['a', 'a2'], edges: ['b', 'b2', 'b3'], options: {} }
@@ -45,7 +53,7 @@ define(['/base/jsc/data/web-worker/store/selection/reducer'], function(reducer) 
             const vertices = ['a'], edges = ['b', 'b3']
             var result = reducer(genState({ vertices, edges }), {
                 type: 'SELECTION_REMOVE',
-                payload: { selection: { vertices: ['a'], edges: ['b'] }} 
+                payload: { selection: { vertices: ['a'], edges: ['b'] }}
             });
             result.should.deep.equal({
                 idsByType: { vertices: [], edges: ['b3'], options: {} }
@@ -88,19 +96,19 @@ define(['/base/jsc/data/web-worker/store/selection/reducer'], function(reducer) 
             const edges = [];
             var result = reducer(genState({ edges }), {
                 type: 'SELECTION_ADD',
-                payload: { selection: { vertices: ['a'], edges: [] }} 
+                payload: { selection: { vertices: ['a'], edges: [] }}
             });
             expect(result.idsByType.edges === edges).to.be.true
 
             result = reducer(genState({ vertices: edges }), {
                 type: 'SELECTION_ADD',
-                payload: { selection: { vertices: [], edges: ['a'] }} 
+                payload: { selection: { vertices: [], edges: ['a'] }}
             });
             expect(result.idsByType.vertices === edges).to.be.true
 
             result = reducer(genState({ vertices: edges, edges }), {
                 type: 'SELECTION_ADD',
-                payload: { selection: { vertices: [], edges: [] }} 
+                payload: { selection: { vertices: [], edges: [] }}
             });
             expect(result.idsByType.vertices === edges).to.be.true
             expect(result.idsByType.edges === edges).to.be.true

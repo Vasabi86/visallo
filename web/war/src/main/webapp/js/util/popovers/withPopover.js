@@ -20,6 +20,7 @@ define([], function() {
             clearTimeout(this.positionChangeErrorCheck);
             $(document).off('.popoverclose')
             this.trigger('unregisterForPositionChanges')
+            this.removeSizeObserver();
         });
 
         this.after('teardown', function() {
@@ -114,6 +115,7 @@ define([], function() {
             }
 
             this.registerAnchorTo();
+            this.registerSizeObserver();
         };
 
         this.withPopoverOnKeydown = function(event) {
@@ -269,5 +271,28 @@ define([], function() {
                 this.popover.show();
             }
         }
+
+        this.registerSizeObserver = function() {
+            if (typeof window.MutationObserver === 'undefined') {
+                return;
+            }
+
+            this._sizeObserver = new MutationObserver(() => {
+                this.positionDialog();
+            });
+            this._sizeObserver.observe(this.dialog[0], {
+                childList: true,
+                subtree: true
+            });
+        };
+
+        this.removeSizeObserver = function() {
+            if (this._sizeObserver) {
+                this._sizeObserver.disconnect();
+            }
+            if (this._sizeObserverTimer) {
+                clearTimeout(this._sizeObserverTimer);
+            }
+        };
     }
 });

@@ -10,7 +10,9 @@ define([], function() {
 
         this.after('initialize', function() {
             this.on('copydocumenttext', this.onDocumentTextCopy);
-            this.updateCopiedDocumentText();
+            Object.defineProperty(visalloData, 'copiedDocumentText', {
+                get: () => this.getCopiedDocumentText()
+            });
         });
 
         this.onDocumentTextCopy = function(event, data) {
@@ -22,10 +24,9 @@ define([], function() {
                     console.error('Unable to set localStorage item');
                 }
             }
-            this.updateCopiedDocumentText();
         };
 
-        this.updateCopiedDocumentText = function() {
+        this.getCopiedDocumentText = function() {
             var text;
             if ('localStorage' in window) {
                 text = localStorage.getItem(copiedDocumentTextStorageKey);
@@ -38,7 +39,7 @@ define([], function() {
                 text = copiedDocumentText;
             }
 
-            this.setPublicApi('copiedDocumentText', text);
+            return text;
         }
     }
 });

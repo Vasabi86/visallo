@@ -1,11 +1,16 @@
 define(['reselect'], function({ createSelector }) {
 
     const getWorkspaceId = (state) => state.workspace.currentId;
-    const getElements = (state) => state.element
+    const getRoot = (state) => state.element
+    const getElements = createSelector([getWorkspaceId, getRoot], (workspaceId, elements) => {
+        return (workspaceId && workspaceId in elements) ? elements[workspaceId] : {};
+    });
+    const getVertices = createSelector([getElements], elements => elements.vertices || {})
+    const getEdges = createSelector([getElements], elements => elements.edges || {})
 
     return {
-        getElements: createSelector([getWorkspaceId, getElements], (workspaceId, elements) => {
-            return (workspaceId && workspaceId in elements) ? elements[workspaceId] : {};
-        })
+        getElements,
+        getVertices,
+        getEdges
     }
 })

@@ -371,28 +371,22 @@ define([
         };
 
         this.onOpenFullscreen = function(event, data) {
-            var self = this,
-                F;
-
             if (!data) return;
 
+            let F;
             Promise.require('util/vertex/formatters')
                 .then(function(_F) {
                     F = _F;
                     return F.vertex.getVertexAndEdgeIdsFromDataEventOrCurrentSelection(data, { async: true });
                 })
-                .then(function(elementIds) {
-                    return Promise.all([
-                        self.dataRequest('vertex', 'store', { vertexIds: elementIds.vertexIds }),
-                        self.dataRequest('edge', 'store', { edgeIds: elementIds.edgeIds })
-                    ]);
-                })
-                .spread(function(vertices, edges) {
-                    var elements = vertices.concat(edges);
+                .then(function({ vertexIds, edgeIds }) {
                     var url = F.vertexUrl.url(
-                            _.isArray(elements) ? elements : [elements],
-                            visalloData.currentWorkspaceId
-                        );
+                        [
+                            ...vertexIds.map(v => `v${v}`),
+                            ...edgeIds.map(e => `e${e}`)
+                        ],
+                        visalloData.currentWorkspaceId
+                    );
                     window.open(url);
                 })
         };

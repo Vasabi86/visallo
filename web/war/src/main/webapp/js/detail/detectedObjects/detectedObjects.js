@@ -308,7 +308,6 @@ define([
                         const elements = { vertexIds: [vertexId] };
                         const dt = event.originalEvent.dataTransfer;
 
-                        dt.effectAllowed = 'all';
                         dnd.setDataTransferWithElements(dt, elements);
                     });
             })

@@ -260,7 +260,6 @@ define([
                 const elements = { vertexIds: vertexId ? [vertexId] : [], edgeIds: edgeId ? [edgeId] : [] };
                 const dt = event.dataTransfer;
                 if (dt) {
-                    dt.effectAllowed = 'all';
                     dnd.setDataTransferWithElements(dt, elements);
                 }
             }

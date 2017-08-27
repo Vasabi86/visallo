@@ -1,39 +1,166 @@
 .detail-text-terms-popover {
-  min-width: 16em;
+  padding: 0;
 
-  ul {
-    list-style: none;
+  @light-color: #999;
+
+  .popover-content {
+    min-width: 22em;
     padding: 0;
-    margin: 0;
-  }
 
-  h1, h2 {
-    font-size: 100%;
-    line-height: 1.6em;
-    margin: 0;
-  }
-
-  .form {
-    h1 {
-      text-transform: uppercase;
-      color: #999;
-      font-size: 90%;
-      padding: 0 0 0.25em;
+    > div > .alert { margin: 0; }
+    .element {
+      font-weight: bold;
+      cursor: move;
+      border-bottom: 1px solid black;
+      &:hover {
+        border-bottom-width: 2px;
+      }
     }
-  }
 
-  .buttons {
-    display: flex;
-    justify-content: space-between;
-    button {
-      &.btn-link:first-child { padding-left: 0; }
-      flex: 0 1 auto;
-      width: auto;
+    ul {
+      @radius: 6px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-height: 20em;
+      overflow: auto;
+      border-radius: @radius;
+
+      li {
+          @border-color: darken(@pane-background, 10%);
+
+          padding: 0.5em 1em 0.5em 0;
+          display: flex;
+
+          .loading {
+            font-style: italic;
+            color: @light-color;
+            font-weight: normal;
+            font-size: 90%;
+          }
+
+          > .icon {
+            background-repeat: no-repeat;
+            background-size: 55% auto;
+            background-position: center 3px;
+            flex: 0 0 30px;
+            opacity: 0.7;
+            &.image {
+              background-size: 90%;
+              background-position: center top;
+            }
+          }
+          > section {
+            flex: 1 1 auto;
+          }
+
+          &.suggestion {
+            > .icon {
+              background-position: center 1px;
+            }
+          }
+          &.justification {
+            padding-bottom: 0;
+            article {
+              min-height: 3.5em;
+            }
+          }
+
+          &:nth-child(2n) {
+              background: @pane-background;
+              border-top: 1px solid @border-color;
+              border-bottom: 1px solid @border-color;
+              article:after {
+                background: linear-gradient(to top, @pane-background, transparent)
+              }
+          }
+          &:first-child {
+              border-top-left-radius: @radius;
+              border-top-right-radius: @radius;
+          }
+          &:last-child {
+              border-bottom-left-radius: @radius;
+              border-bottom-right-radius: @radius;
+          }
+          .btn {
+            opacity: 0.3;
+            min-width: 12ex;
+            margin: 0 0 3px 0;
+            &:last-child {
+              margin: 0;
+            }
+          }
+          &:hover .btn {
+            opacity: 1;
+          }
+          &:only-child .btn {
+            opacity: 1;
+            min-width: auto;
+          }
+      }
+   
+      h1 {
+        line-height: 1.3;
+        font-weight: normal;
+        padding-bottom: 0.25em;
+      }
+      .buttons {
+        float: right;
+        display: flex;
+        flex-direction: column;
+        margin: 0 0 0.5em 0.5em;
+      }
+
+      article {
+        font-size: 90%;
+        max-height: 4em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        position: relative;
+        word-break: break-word;
+
+        .selection {
+          .justification-selection;
+        }
+
+        &:after {
+          content: '';
+          display: block;
+          position: absolute;
+          top: 3.1em;
+          height: 1em;
+          left: 0;
+          width: 100%;
+          background: linear-gradient(to top, white, transparent);
+        }
+      }
     }
+
+    h1, h2 {
+      font-size: 100%;
+      line-height: 1.6em;
+      margin: 0;
+    }
+
+    .form {
+      padding: 0.5em 1em;
+      h1 {
+        text-transform: uppercase;
+        color: @light-color;
+        font-size: 90%;
+        padding: 0 0 0.25em;
+      }
+      .buttons {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        button {
+          &.btn-link:first-child { padding-left: 0; }
+          flex: 0 1 auto;
+          width: auto;
+        }
+      }
+    }
+
   }
 }
-
-  /*MIGHT NEED FOR statement/prop forms
-  .legacy {
-    @import (multiple) "../../detail/dropdown";
-  }*/

@@ -15,7 +15,7 @@ define(['updeep'], function(u) {
     }
 
     function addSelection(state, { selection }) {
-        const { vertices, edges, options = {} } = selection;
+        const { vertices = [], edges = [], options = {} } = selection;
         const addElements = (type, append) => (elements) => {
             if (append.length) {
                 return _.uniq(elements.concat(append))
@@ -43,11 +43,11 @@ define(['updeep'], function(u) {
     }
 
     function setSelection(state, { selection }) {
-        const { vertices, edges, options = {} } = selection;
+        const { vertices = [], edges = [], options = {} } = selection;
         return u({
             idsByType: u.constant({
-                vertices: _.uniq(vertices || []),
-                edges: _.uniq(edges || []),
+                vertices: _.uniq(vertices),
+                edges: _.uniq(edges),
                 options
             })
         }, state)

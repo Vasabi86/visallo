@@ -58,6 +58,15 @@ define([
             });
         },
 
+        propertyDetails: function(edgeId, propertyName, propertyKey, visibilitySource = '') {
+            return ajax('GET', '/edge/property/details', {
+                edgeId,
+                propertyName,
+                propertyKey,
+                visibilitySource
+            });
+        },
+
         /**
          * Set visibility on a property
          *

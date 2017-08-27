@@ -16,9 +16,13 @@ define([
         },
 
         renderMessage() {
+            const { error } = this.props;
+
             var info;
-            if (this.props.error.statusText) {
-                info = this.props.error.statusText;
+            if (_.isString(error)) {
+                info = error;
+            } else if (error.statusText) {
+                info = error.statusText;
             } else {
                 info = i18n('admin.plugin.error');
             }

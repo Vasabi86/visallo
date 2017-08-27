@@ -15,11 +15,14 @@ define(['../actions', 'data/web-worker/util/ajax'], function(actions, ajax) {
 
 
     const api = {
-        get: ({ workspaceId, vertexIds, edgeIds, invalidate }) => (dispatch, getState) => {
-            if ((vertexIds || edgeIds || []).length) {
+        get: ({ workspaceId, vertexIds = [], edgeIds = [], invalidate }) => (dispatch, getState) => {
+            if (vertexIds.length || edgeIds.length) {
                 const state = getState();
+                if (!workspaceId) {
+                    workspaceId = state.workspace.currentId;
+                }
                 const elements = state.element[workspaceId]
-                const toRequest = { vertexIds: vertexIds || [], edgeIds: edgeIds || [] };
+                const toRequest = { vertexIds, edgeIds };
 
                 if (invalidate !== true && elements) {
                     if (elements.vertices) toRequest.vertexIds = _.reject(toRequest.vertexIds, vId => vId in elements.vertices);

@@ -48,14 +48,12 @@ define([], function() {
                         position = { left, top };
 
                         if (scroller[0] === document) {
-                            console.log(top, scroller.scrollTop())
                             position.top += scroller.scrollTop();
                         }
                     } else {
                         width = $target.outerWidth();
                         height = $target.outerHeight();
                         position = $target.offset();
-                        console.log($target.offset(), $target.position(), $target.scrollTop())
                         if ((width === 0 || height === 0) && _.isFunction(event.target.getBBox)) {
                             var box = event.target.getBBox();
                             width = box.width;
@@ -76,7 +74,6 @@ define([], function() {
                     if (data && data.anchorTo) {
                         eventData.anchor = data.anchorTo;
                     }
-                    console.log('triggering', eventData.position)
                     self.trigger(event.target, 'positionChanged', eventData);
                 };
 
