@@ -179,7 +179,7 @@ define([
                 finishedVertexConnection: this.cancelDraw,
                 'zoomOut zoomIn fit': this.onKeyboard,
                 createVertex: event => this.createVertex(),
-                fileImportSuccess: this.onFileImportSuccess,
+                fileImportSuccess: { node: $('.products-full-pane.visible')[0], handler: this.onFileImportSuccess },
                 previewVertex: this.previewVertex,
                 closePreviewVertex: (event, { vertexId }) => {
                     delete this.detailPopoversMap[vertexId];

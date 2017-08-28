@@ -46,7 +46,7 @@ define([
         render() {
             const { viewport, generatePreview } = this.state;
             return (
-                <div style={{height:'100%'}} ref="wrap">
+                <div style={{height:'100%'}} ref={r => {this.wrap = r}}>
                 <OpenLayers
                     features={this.mapElementsToFeatures()}
                     viewport={viewport}
@@ -75,7 +75,7 @@ define([
         },
 
         componentDidMount() {
-            $(this.refs.wrap).on('selectAll', (event) => {
+            $(this.wrap).on('selectAll', (event) => {
                 this.props.onSelectAll(this.props.product.id);
             })
             $(document).on('elementsCut.org-visallo-map', (event, { vertexIds }) => {
@@ -84,10 +84,20 @@ define([
             $(document).on('elementsPasted.org-visallo-map', (event, elementIds) => {
                 this.props.onDropElementIds(elementIds)
             })
+
+            this.legacyListeners({
+                fileImportSuccess: { node: $('.products-full-pane.visible')[0], handler: (event, { vertexIds }) => {
+                    this.props.onDropElementIds({vertexIds});
+                }}
+            })
         },
 
         componentWillUnmount() {
-            $(this.refs.wrap).off('selectAll');
+            this.removeEvents.forEach(({ node, func, events }) => {
+                $(node).off(events, func);
+            });
+
+            $(this.wrap).off('selectAll');
             $(document).off('.org-visallo-map');
             this.saveViewport(this.props)
         },
@@ -246,8 +256,22 @@ define([
             }
 
             return { source, sourceOptions };
-        }
+        },
 
+        legacyListeners(map) {
+            this.removeEvents = [];
+
+            _.each(map, (handler, events) => {
+                var node = this.wrap;
+                var func = handler;
+                if (!_.isFunction(handler)) {
+                    node = handler.node;
+                    func = handler.handler;
+                }
+                this.removeEvents.push({ node, func, events });
+                $(node).on(events, func);
+            })
+        }
     });
 
     return RegistryInjectorHOC(Map, [

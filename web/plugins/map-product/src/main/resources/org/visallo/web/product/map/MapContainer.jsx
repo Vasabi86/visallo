@@ -66,11 +66,11 @@ define([
                 },
 
                 onDropElementIds(elementIds) {
-                    dispatch(mapActions.dropElements(props.product.id, elements, { undoable: true }));
+                    dispatch(mapActions.dropElements(props.product.id, elementIds, { undoable: true }));
                 },
 
                 onRemoveElementIds: (elementIds) => {
-                    dispatch(mapActions.removeElements(props.product.id, elements, { undoable: true }))
+                    dispatch(mapActions.removeElements(props.product.id, elementIds, { undoable: true }))
                 },
 
                 onVertexMenu: (element, vertexId, position) => {

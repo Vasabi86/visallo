@@ -470,11 +470,10 @@ define([
                 }
             }
 
-            // If graph is open use that node for custom product behavior
-            // TODO: generalize this for other products
-            var $graph = $('.visible .org-visallo-graph');
+            // If product is open use the containing node for custom product behavior
+            var $productContainer = $('.products-full-pane.visible');
             require(['util/popovers/fileImport/fileImport'], function(FileImport) {
-                FileImport.attachTo($graph.length ? $graph : self.node, config);
+                FileImport.attachTo($productContainer.length ? $productContainer : self.node, config);
             });
         };
 

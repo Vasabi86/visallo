@@ -12,11 +12,24 @@ define([
             const state = getState();
             const workspaceId = state.workspace.currentId;
             const { vertexIds, edgeIds } = elements;
-            // TODO: get edges from store first
-            var edges = (edgeIds && edgeIds.length) ? (
-                ajax('POST', '/edge/multiple', { edgeIds })
+            const fetchEdgeIds = [];
+            const edgeVertexIds = [];
+
+            if (edgeIds && edgeIds.length) {
+                edgeIds.forEach(edgeId => {
+                    const edge = store.element[workspaceId].edges[edgeId];
+                    if (edge) {
+                        edgeVertexIds.push(edge.inVertexId, edge.outVertexId);
+                    } else {
+                        fetchEdgeIds.push(edgeId);
+                    }
+                });
+            }
+
+            var edges = fetchEdgeIds.length ? (
+                ajax('POST', '/edge/multiple', { edgeIds: fetchEdgeIds })
                     .then(function({ edges }) {
-                        return _.flatten(edges.map(e => [e.inVertexId, e.outVertexId]));
+                        return _.flatten(edges.map(e => [e.inVertexId, e.outVertexId])).concat(edgeVertexIds);
                     })
                 ) : Promise.resolve([]);
 
