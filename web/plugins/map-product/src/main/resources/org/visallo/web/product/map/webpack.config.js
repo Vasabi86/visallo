@@ -9,6 +9,7 @@ var VisalloAmdExternals = [
     'data/web-worker/store/product/actions',
     'data/web-worker/store/product/actions-impl',
     'data/web-worker/store/product/selectors',
+    'data/web-worker/store/element/actions-impl',
     'data/web-worker/store/ontology/selectors',
     'data/web-worker/store/selection/actions',
     'data/web-worker/store/selection/actions-impl',

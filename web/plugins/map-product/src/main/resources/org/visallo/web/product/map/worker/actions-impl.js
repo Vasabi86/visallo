@@ -2,9 +2,10 @@ define([
     'data/web-worker/store/actions',
     'data/web-worker/store/product/actions-impl',
     'data/web-worker/store/product/selectors',
+    'data/web-worker/store/element/actions-impl',
     'data/web-worker/store/selection/actions-impl',
     'data/web-worker/util/ajax'
-], function(actions, productActions, productSelectors, selectionActions, ajax) {
+], function(actions, productActions, productSelectors, elementActions, selectionActions, ajax) {
     actions.protectFromMain();
 
     const api = {
@@ -17,7 +18,7 @@ define([
 
             if (edgeIds && edgeIds.length) {
                 edgeIds.forEach(edgeId => {
-                    const edge = store.element[workspaceId].edges[edgeId];
+                    const edge = state.element[workspaceId].edges[edgeId];
                     if (edge) {
                         edgeVertexIds.push(edge.inVertexId, edge.outVertexId);
                     } else {
@@ -28,15 +29,16 @@ define([
 
             var edges = fetchEdgeIds.length ? (
                 ajax('POST', '/edge/multiple', { edgeIds: fetchEdgeIds })
-                    .then(function({ edges }) {
+                    .then(({ edges }) => {
                         return _.flatten(edges.map(e => [e.inVertexId, e.outVertexId])).concat(edgeVertexIds);
                     })
                 ) : Promise.resolve([]);
 
-            edges.then(function(edgeVertexIds) {
+            edges.then((result) => {
                 const product = productSelectors.getProductsById(getState())[productId];
                 const existing = product.extendedData ? Object.keys(product.extendedData.vertices) : [];
-                const combined = _.without(_.uniq(edgeVertexIds.concat(vertexIds)), ..._.pluck(existing, 'id'));
+                const combined = _.without(_.uniq(result.concat(edgeVertexIds, vertexIds)), ..._.pluck(existing, 'id'));
+
                 if (!combined.length) return;
 
                 let undoPayload = {};
@@ -56,12 +58,19 @@ define([
 
                 dispatch({
                     type: 'PRODUCT_MAP_ADD_ELEMENTS',
-                    payload: { workspaceId, productId, vertexIds, ...undoPayload }
+                    payload: {
+                        workspaceId,
+                        productId,
+                        vertexIds: combined,
+                        ...undoPayload
+                    }
                 });
 
                 ajax('POST', '/product/map/vertices/update', {
                     productId,
                     updates: _.object(combined.map(id => [id, {}]))
+                }).then(() => {
+                    dispatch(elementActions.get({ workspaceId, vertexIds: combined }));
                 })
                 dispatch(productActions.select({ productId }));
             })
