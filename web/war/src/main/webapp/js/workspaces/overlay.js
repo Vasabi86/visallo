@@ -36,10 +36,10 @@ define([
     );
 
 
-    var LAST_SAVED_UPDATE_FREQUENCY_SECONDS = 30,
-        MENUBAR_WIDTH = 30,
-        UPDATE_WORKSPACE_DIFF_SECONDS = 5,
-        SHOW_UNPUBLUSHED_CHANGES_SECONDS = 3;
+    const LAST_SAVED_UPDATE_FREQUENCY_SECONDS = 30;
+    const UPDATE_WORKSPACE_DIFF_SECONDS = 5;
+    const SHOW_UNPUBLUSHED_CHANGES_SECONDS = 3;
+    const COMMENT_ENTRY_IRI = 'http://visallo.org/comment#entry';
 
     return defineComponent(WorkspaceOverlay, withDataRequest);
 
@@ -61,8 +61,9 @@ define([
         this.after('initialize', function() {
             var self = this;
 
+            this.menuBarWidth = 30;
             requestAnimationFrame(function() {
-                MENUBAR_WIDTH = $('.menubar-pane').width();
+                self.menuBarWidth = $('.menubar-pane').width();
             })
 
             this.updateDiffBadge = _.throttle(this.updateDiffBadge.bind(this), UPDATE_WORKSPACE_DIFF_SECONDS * 1000)
@@ -140,7 +141,7 @@ define([
         };
 
         this.onGraphPaddingUpdated = function(event, data) {
-            this.$node.css('left', data.padding.l + MENUBAR_WIDTH);
+            this.$node.css('left', data.padding.l + this.menuBarWidth);
 
             var width = $(window).width(),
                 height = $(window).height(),
@@ -148,7 +149,7 @@ define([
                 paddingH = 100,
                 paddingV = 75,
                 popoverCss = {
-                    maxWidth: (width - MENUBAR_WIDTH - (data.padding.l + data.padding.r) - paddingH),
+                    maxWidth: (width - this.menuBarWidth - (data.padding.l + data.padding.r) - paddingH),
                     maxHeight: (height - (data.padding.t + data.padding.b) - paddingV)
                 };
 
@@ -257,7 +258,10 @@ define([
                     filteredDiffs = _.filter(diffs, function(diff) {
                         if (diff.type === 'PropertyDiffItem') {
                             var ontologyProperty = ontologyProperties.byTitle[diff.name];
-                            if (!ontologyProperty || !ontologyProperty.userVisible) return false;
+                            if (!ontologyProperty ||
+                                !(ontologyProperty.userVisible || ontologyProperty.title === COMMENT_ENTRY_IRI)) {
+                                return false;
+                            }
 
                             var vertexDiff = vertexDiffsById[diff.elementId];
                             if (vertexDiff && diff.name === 'title') return true;

@@ -18,6 +18,7 @@ define([
     'use strict';
 
     var SHOW_CHANGES_TEXT_SECONDS = 3;
+    var COMMENT_ENTRY_IRI = 'http://visallo.org/comment#entry';
     var DiffPanel;
 
     return defineComponent(Diff, withDataRequest);
@@ -286,7 +287,7 @@ define([
                                     var compoundProperty = self.ontologyProperties.byDependentToCompound[diff.name];
                                     var isDependent = !!diff.dependentName;
 
-                                    if (ontologyProperty && ontologyProperty.userVisible) {
+                                    if (ontologyProperty && (ontologyProperty.userVisible || ontologyProperty.title === COMMENT_ENTRY_IRI)) {
                                         if (!isDependent) {
                                             diff.id = elementId + diff.name + diff.key;
                                             diff.publish = previousDiffsById[diff.id] && previousDiffsById[diff.id].publish;
