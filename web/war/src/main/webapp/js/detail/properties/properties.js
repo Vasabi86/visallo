@@ -763,7 +763,7 @@ define([
                             valueSpan.textContent = truncatedValueCache[property.key] && truncatedValueCache[property.key].expanded
                                 ? textContent : truncatedTextContent;
 
-                            if (textContent !== truncatedTextContent) {
+                            if (textContent.trim() !== truncatedTextContent) {
                                 truncatedValueCache[property.key] = {
                                     expanded: false,
                                     ...truncatedValueCache[property.key],
