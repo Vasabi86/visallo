@@ -117,10 +117,7 @@ That should not be possible as /user/me ensures a workspace is created in that c
      */
     function applyDiff(state, diff) {
         // Need to copy all changed paths, since jsonpatch mutates
-        // Straight clone is faster for many changes
-        let copy = diff.length > 25 ?
-            jsonpatch.deepClone(state) :
-            copyChangedPaths(state, diff);
+        let copy = copyChangedPaths(state, diff);
 
         const newState = jsonpatch.applyPatch(copy, diff).newDocument;
 
