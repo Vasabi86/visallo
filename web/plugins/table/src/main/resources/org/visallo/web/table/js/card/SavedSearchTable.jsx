@@ -36,6 +36,7 @@ define([
         onTabClick: PropTypes.func,
         onHeaderClick: PropTypes.func,
         onRowClick: PropTypes.func,
+        onContextMenu: PropTypes.func,
         onColumnResize: PropTypes.func,
         onConfigureColumnsClick: PropTypes.func
     };

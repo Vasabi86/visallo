@@ -33,6 +33,7 @@ define([
             loadMoreRows: PropTypes.func,
             onHeaderClick: PropTypes.func,
             onRowClick: PropTypes.func,
+            onContextMenu: PropTypes.func,
             onColumnResize: PropTypes.func,
             onConfigureClick: PropTypes.func
         },
@@ -55,7 +56,7 @@ define([
                 scrollToIndex,
                 onRowsRendered,
                 onHeaderClick,
-                onRowClick,
+                onContextMenu,
                 onColumnResize,
                 onConfigureColumnsClick } = this.props;
             const rowCount = data.length;
@@ -86,7 +87,7 @@ define([
                                          rowHeight={({ index }) => data[index] && data[index].height || ROW_HEIGHT}
                                          rowCount={rowCount}
                                          rowGetter={({ index }) => data[index] || {}}
-                                         rowRenderer={(args) => SelectableRowRenderer(args, selected)}
+                                         rowRenderer={(args) => SelectableRowRenderer({ ...args, onContextMenu, selected })}
                                          scrollToIndex={scrollToIndex}
                                          onRowsRendered={onRowsRendered}
                                          ref={(ref) => {

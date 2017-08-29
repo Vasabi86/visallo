@@ -8,14 +8,15 @@ define([], function() {
       className,
       columns,
       index,
-      isScrolling,
       onRowClick,
       onRowDoubleClick,
       onRowMouseOver,
       onRowMouseOut,
       rowData,
-      style
-    }, selected) {
+      style,
+      selected,
+      onContextMenu
+    }) {
         const a11yProps = {}
 
         if (
@@ -55,6 +56,7 @@ define([], function() {
                 {...a11yProps}
                 className={className}
                 style={style}
+                onContextMenu={(event) => { onContextMenu(event, index)}}
                 data-row-index={index}
             >
                 {columns}

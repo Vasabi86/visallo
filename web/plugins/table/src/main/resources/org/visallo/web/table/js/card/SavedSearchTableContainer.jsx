@@ -25,7 +25,13 @@ define([
         }),
 
         (dispatch, props) => ({
-            onSetSelection: (selection) => dispatch(selectionActions.set(selection))
+            onSetSelection: (selection) => dispatch(selectionActions.set(selection)),
+            onVertexMenu: (element, vertexId, position) => {
+                $(element).trigger('showVertexContextMenu', { vertexId, position });
+            },
+            onEdgeMenu: (element, edgeIds, position) => {
+                $(element).trigger('showEdgeContextMenu', { edgeIds, position });
+            }
         })
     )(SavedSearchTableCard);
 

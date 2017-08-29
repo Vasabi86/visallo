@@ -53,9 +53,7 @@ define([
         },
 
         componentDidMount() {
-            const card = this.state.card;
-            const { showError, item } = this.props;
-            const searchId = item.configuration.searchId;
+            const searchId = this.props.item.configuration.searchId;
 
             if (searchId) this.loadTable();
 
@@ -72,12 +70,10 @@ define([
             $(this.cardRef).parent().on('refreshData', this.onRefreshData);
             $(this.cardRef).on('columnsConfigured', this.onColumnsConfigured);
             $(this.cardRef).on('sortConfigured', this.onSortConfigured);
-            $(document).on('objectsSelected', this.onObjectsSelected);
         },
 
         componentWillUnmount() {
             $(this.cardRef).parent().off('refreshData', this.onRefreshData);
-            $(document).off('objectsSelected', this.onObjectsSelected);
             $(this.cardRef).off('columnsConfigured', this.onColumnsConfigured);
             $(this.cardRef).off('sortConfigured', this.onSortConfigured);
         },
@@ -94,7 +90,7 @@ define([
         },
 
         render() {
-            const { card, tableView, tableData } = this.state;
+            const { tableView, tableData } = this.state;
             const { configureItem, item } = this.props;
             const { searchId } = item.configuration;
 
@@ -125,6 +121,7 @@ define([
                                     onRowsRendered={this.loadRows}
                                     onTabClick={this.switchToTab}
                                     onRowClick={this.onRowClick}
+                                    onContextMenu={this.onContextMenu}
                                     onHeaderClick={this.onHeaderClick}
                                     onConfigureColumnsClick={this.toggleColumnConfigPopover}
                                     onColumnResize={this.onColumnResizeThrottled}
@@ -151,11 +148,9 @@ define([
 
         transformDataToProps() {
             const { tableData, tableView } = this.state;
-            const { searchId, tableSettings } = this.props.item.configuration;
-            const url = tableView.url;
-            const searchData = tableData[searchId];
+            const searchData = tableData[this.props.item.configuration.searchId];
             const activeTab = _.findKey(tableView, (tab) => tab.active || false);
-            const selected = url.indexOf('vertex') > -1
+            const selected = tableView.url.indexOf('vertex') > -1
                 ? this.props.selection.vertices
                 : this.props.selection.edges;
             const { sortColumn, direction } = tableView[activeTab];
@@ -256,7 +251,7 @@ define([
 
         loadTabs() {
             const { tableData, tableView } = this.state;
-            const { concepts, relationships, properties } = this.props;
+            const { concepts, relationships } = this.props;
             const { searchId, searchParameters } = this.props.item.configuration;
             const url = tableView.url;
             const options = buildAggregateSearchOptions(url, searchParameters);
@@ -389,7 +384,6 @@ define([
 
                         function getColumnValues(properties) {
                             return Promise.map(properties, (p) => {
-                                let displayValue;
                                 let displayValuePromise;
                                 let wrapper = document.createElement('div')
 
@@ -466,8 +460,7 @@ define([
 
         updateTabsSettings(searchId, tabs) {
             const { tableView } = this.state;
-            const { item, extension, configurationChanged, concepts, relationships } = this.props;
-            const configuration = item.configuration;
+            const { concepts, relationships } = this.props;
 
             const nextTableView = _.chain(tabs)
                 .omit((tab, tabId) => !concepts[tabId] && !relationships[tabId])
@@ -523,13 +516,12 @@ define([
 
             if (this.props.editable && shouldSave !== false) {
                 const { item, extension, configurationChanged } = this.props;
-                const { searchId, tableSettings } = item.configuration;
 
                 if (!item.configuration.tableSettings) {
                     item.configuration.tableSettings = {};
                 }
 
-                item.configuration.tableSettings[searchId] = tableView;
+                item.configuration.tableSettings[item.configuration.searchId] = tableView;
 
                 configurationChanged({
                     item: item,
@@ -568,7 +560,7 @@ define([
                 vertices: [...vertices],
                 edges: [...edges]
             };
-            const type = url.indexOf('vertex') ? 'vertices' : 'edges';
+            const type = url.indexOf('vertex') > -1 ? 'vertices' : 'edges';
             let selectedIndicesForType = selection[type].map((id) => {
                 return parseInt(_.findIndex(tabData, (value) => value && value.id === id));
             });
@@ -618,8 +610,26 @@ define([
             }
         },
 
+        onContextMenu(event, index) {
+            event.nativeEvent.preventDefault();
+
+            const { tableData, tableView } = this.state;
+            const url = tableView.url;
+            const { searchId } = this.props.item.configuration;
+            const activeTab = _.findKey(tableView, (tab) => tab.active || false);
+            const tabData = tableData[searchId][activeTab];
+
+            const elementId = tabData[index].id;
+            const position = { x: event.clientX, y: event.clientY };
+
+            if (url.indexOf('vertex') > -1) {
+                this.props.onVertexMenu(event.nativeEvent.target, elementId, position);
+            } else {
+                this.props.onEdgeMenu(event.nativeEvent.target, [elementId], position);
+            }
+        },
+
         onHeaderClick(header) {
-            const self = this;
             const { tableData, tableView } = this.state;
             const { searchId } = this.props.item.configuration;
             const activeTab = _.findKey(tableView, (tab) => tab.active || false);
@@ -669,7 +679,6 @@ define([
         },
 
         toggleColumnConfigPopover(event) {
-            const self = this;
             const tableView = this.state.tableView;
             const properties = this.props.properties;
             const activeTab = _.findKey(tableView, (tab) => tab.active || false);
