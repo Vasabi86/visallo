@@ -40,18 +40,23 @@ define([
         this.defaultAttrs({
             inputSelector: 'input',
             formatSelector: 'input.format',
-            timezoneSelector: 'input.timezone',
+            timezoneSelector: 'select.timezone',
             selectSelector: 'select'
         });
 
         this.after('initialize', function() {
-            var f = formats(this.attr.property.dateOnly || false, this.attr.mapping.hints.format);
+            const f = formats(this.attr.property.displayType ? this.attr.property.displayType === 'dateOnly' : false, this.attr.mapping.hints.format);
+            const timezones = _.mapObject(F.timezone.list(), ({ offsetDisplay, dst }, timezone) => (
+                `${offsetDisplay} ${timezone}${dst ? '*' : ''}`
+            ));
 
             this.$node.html(template({
-                timezone: this.attr.mapping.hints.timezone || F.timezone.currentTimezone().name,
+                timezones,
                 formats: f,
                 format: this.attr.mapping.hints.format || f[0].format
             }));
+
+            this.select('timezoneSelector').val(this.attr.mapping.hints.timezone || F.timezone.currentTimezone().name);
 
             this.on('change keyup paste', {
                 inputSelector: this.onChange
