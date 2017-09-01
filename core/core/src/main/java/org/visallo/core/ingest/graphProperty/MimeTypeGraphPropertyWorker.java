@@ -55,7 +55,8 @@ public abstract class MimeTypeGraphPropertyWorker extends GraphPropertyWorker {
             return false;
         }
 
-        if (VisalloProperties.MIME_TYPE.hasProperty(element, getMultiKey(property))) {
+        String metadataValue = VisalloProperties.MIME_TYPE_METADATA.getMetadataValue(property.getMetadata(), null);
+        if (metadataValue != null) {
             return false;
         }
 
